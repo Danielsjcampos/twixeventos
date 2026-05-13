@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/config'
 import crypto from 'crypto'
+import sharp from 'sharp'
+
+/* ── Converte qualquer imagem para WebP otimizado ── */
+async function toWebP(buffer: Buffer): Promise<Buffer> {
+  return sharp(buffer)
+    .rotate()           // respeita EXIF orientation (fotos de celular)
+    .webp({ quality: 82, effort: 4 })
+    .toBuffer()
+}
 
 /* ── helpers ── */
 function hasCloudinary() {
@@ -24,8 +33,15 @@ export async function POST(req: NextRequest) {
   const file = formData.get('file') as File | null
   if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 })
 
-  const bytes = await file.arrayBuffer()
-  const buffer = Buffer.from(bytes)
+  const raw = Buffer.from(await file.arrayBuffer())
+
+  // Converter para WebP (exceto SVG e GIF animado que não fazem sentido comprimir assim)
+  const isSvg = file.type === 'image/svg+xml'
+  const isGif = file.type === 'image/gif'
+  const webpBuffer = (isSvg || isGif) ? raw : await toWebP(raw)
+  const finalType = (isSvg || isGif) ? file.type : 'image/webp'
+  const finalExt  = isSvg ? 'svg' : isGif ? 'gif' : 'webp'
+  const filename  = `${crypto.randomUUID()}.${finalExt}`
 
   /* ── 1. Cloudinary (when configured) ── */
   if (hasCloudinary()) {
@@ -40,7 +56,7 @@ export async function POST(req: NextRequest) {
       .digest('hex')
 
     const cldForm = new FormData()
-    cldForm.append('file', new Blob([buffer], { type: file.type }), file.name)
+    cldForm.append('file', new Blob([new Uint8Array(webpBuffer)], { type: finalType }), filename)
     cldForm.append('signature', signature)
     cldForm.append('timestamp', timestamp)
     cldForm.append('api_key', apiKey)
@@ -52,31 +68,27 @@ export async function POST(req: NextRequest) {
     })
     if (!res.ok) return NextResponse.json({ error: 'Cloudinary upload failed' }, { status: 500 })
     const data = await res.json()
-    return NextResponse.json({ url: data.secure_url as string })
+    return NextResponse.json({ url: data.secure_url as string, originalSize: raw.length, finalSize: webpBuffer.length })
   }
 
   /* ── 2. Vercel Blob (production default) ── */
   if (hasVercelBlob()) {
     const { put } = await import('@vercel/blob')
-    const ext = file.name.split('.').pop() ?? 'jpg'
-    const filename = `twix-eventos/${crypto.randomUUID()}.${ext}`
-    const blob = await put(filename, buffer, {
+    const blob = await put(`twix-eventos/${filename}`, webpBuffer, {
       access: 'public',
-      contentType: file.type || 'image/jpeg',
+      contentType: finalType,
     })
-    return NextResponse.json({ url: blob.url })
+    return NextResponse.json({ url: blob.url, originalSize: raw.length, finalSize: webpBuffer.length })
   }
 
   /* ── 3. Local filesystem (dev only) ── */
   if (process.env.NODE_ENV !== 'production') {
     const { writeFile, mkdir } = await import('fs/promises')
     const { join } = await import('path')
-    const ext = file.type === 'image/webp' ? 'webp' : (file.name.split('.').pop() ?? 'jpg')
-    const filename = `${crypto.randomUUID()}.${ext}`
     const uploadsDir = join(process.cwd(), 'public', 'uploads', 'brinquedos')
     await mkdir(uploadsDir, { recursive: true })
-    await writeFile(join(uploadsDir, filename), buffer)
-    return NextResponse.json({ url: `/uploads/brinquedos/${filename}` })
+    await writeFile(join(uploadsDir, filename), webpBuffer)
+    return NextResponse.json({ url: `/uploads/brinquedos/${filename}`, originalSize: raw.length, finalSize: webpBuffer.length })
   }
 
   /* ── Nenhum storage configurado em produção ── */
