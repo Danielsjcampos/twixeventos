@@ -110,7 +110,7 @@ export function HeroSlidesEditor({ initialSlidesJson, onChange }: Props) {
         <div className="rounded-xl border-2 border-dashed border-brand-border py-16 flex flex-col items-center gap-3 text-brand-muted">
           <Palette size={32} className="opacity-30" />
           <p className="text-sm font-medium">Nenhum slide criado</p>
-          <p className="text-xs opacity-60">Clique em "Adicionar Slide" para começar</p>
+          <p className="text-xs opacity-60">Clique em &ldquo;Adicionar Slide&rdquo; para começar</p>
         </div>
       )}
 

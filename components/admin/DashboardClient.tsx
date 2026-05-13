@@ -3,15 +3,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatedNumber } from './AnimatedNumber'
 import {
-  AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip,
+  Area, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell,
-  RadialBarChart, RadialBar, FunnelChart, Funnel, LabelList,
+  RadialBarChart, RadialBar,
   ComposedChart, Line,
 } from 'recharts'
 import {
   Users, CalendarDays, TrendingUp, TrendingDown, DollarSign,
-  UserCheck, AlertTriangle, Trophy, Star, Package, Clock,
-  Zap, Target, BarChart2, ArrowUpRight, ArrowDownRight,
+  UserCheck, AlertTriangle, Trophy, Clock,
+  Target, ArrowUpRight, ArrowDownRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -58,7 +58,6 @@ interface Metrics {
   leadsPorStatus:   { status: string; total: number }[]
   origemLeads:      { origem: string; total: number }[]
   topBrinquedos:    { nome: string; total: number }[]
-  eventosPorStatus: { status: string; total: number }[]
 }
 interface ChartData { mes: number; receita: number; festas: number }
 interface LeadAlerta { id: string; nome: string; status: string; ultimaInteracao: Date }

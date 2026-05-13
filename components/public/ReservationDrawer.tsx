@@ -38,7 +38,7 @@ export function ReservationDrawer() {
 
   useEffect(() => {
     useCart.persist.rehydrate()
-    setMounted(true)
+    setMounted(true) // eslint-disable-line react-hooks/set-state-in-effect
   }, [])
 
   // Reset to cart step when drawer closes

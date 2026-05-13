@@ -16,10 +16,9 @@ async function DashboardContent() {
     getReceitaPorMes(ano),
   ])
 
-  const leadsAlerta = leads.filter(l => {
-    const diff = Date.now() - new Date(l.ultimaInteracao).getTime()
-    return diff > 48 * 3600 * 1000
-  })
+  const limiteAlerta = new Date()
+  limiteAlerta.setHours(limiteAlerta.getHours() - 48)
+  const leadsAlerta = leads.filter(l => new Date(l.ultimaInteracao) < limiteAlerta)
 
   return (
     <DashboardClient

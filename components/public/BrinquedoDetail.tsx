@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { Plus, Check, ShoppingCart, X } from 'lucide-react'
 import { whatsappLink, WHATSAPP_NUMBER, cn } from '@/lib/utils'
 import { useCart } from '@/lib/store/cart'
@@ -29,7 +30,7 @@ export function BrinquedoDetail({ brinquedo }: { brinquedo: Brinquedo }) {
 
   useEffect(() => {
     useCart.persist.rehydrate()
-    setMounted(true)
+    setMounted(true) // eslint-disable-line react-hooks/set-state-in-effect
   }, [])
 
   const inCart = mounted && has(brinquedo.id)
@@ -180,12 +181,12 @@ export function BrinquedoDetail({ brinquedo }: { brinquedo: Brinquedo }) {
               Reservar via WhatsApp
             </a>
 
-            <a
+            <Link
               href="/brinquedos"
               className="flex items-center justify-center w-full border border-brand-border text-brand-text hover:border-brand-accent hover:text-brand-accent font-semibold py-3 rounded-xl transition-colors"
             >
               Ver mais brinquedos
-            </a>
+            </Link>
           </div>
 
           <p className="text-brand-muted text-xs mt-4 text-center">

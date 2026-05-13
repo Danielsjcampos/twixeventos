@@ -43,7 +43,7 @@ export function FeaturedCard3D({ brinquedo, index }: FeaturedCard3DProps) {
 
   useEffect(() => {
     useCart.persist.rehydrate()
-    setMounted(true)
+    setMounted(true) // eslint-disable-line react-hooks/set-state-in-effect
   }, [])
 
   const inCart = mounted && has(id)

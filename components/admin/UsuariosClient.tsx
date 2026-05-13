@@ -302,7 +302,7 @@ export function UsuariosClient({ usuariosInicial }: { usuariosInicial: Usuario[]
           <div className="flex flex-col items-center justify-center py-16 text-center text-brand-muted">
             <Users className="size-10 mb-3 opacity-30" />
             <p className="font-medium">Nenhum usuário cadastrado</p>
-            <p className="text-xs mt-1">Clique em "Novo Usuário" para começar</p>
+            <p className="text-xs mt-1">Clique em &ldquo;Novo Usuário&rdquo; para começar</p>
           </div>
         ) : (
           <div className="divide-y divide-brand-border">

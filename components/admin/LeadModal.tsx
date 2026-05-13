@@ -240,7 +240,7 @@ export function LeadModal({ lead, onClose, onUpdate }: Props) {
 
             {lead.mensagem && (
               <div className="mt-1 p-3 rounded-lg bg-zinc-900 text-sm text-zinc-300 leading-relaxed border border-zinc-800">
-                "{lead.mensagem}"
+                &ldquo;{lead.mensagem}&rdquo;
               </div>
             )}
           </div>
