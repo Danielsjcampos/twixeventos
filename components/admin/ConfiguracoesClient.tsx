@@ -3,7 +3,8 @@
 import { useState, useTransition } from 'react'
 import {
   Globe, Search, Zap, MessageCircle, Layout, Share2, Settings,
-  Save, Check, Eye, EyeOff, ChevronRight, Layers, Bot,
+  Save, Check, Eye, EyeOff, ChevronRight, Layers, Bot, Map,
+  ExternalLink, RefreshCw, CheckCircle2, XCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { saveConfigs } from '@/app/actions/configuracoes'
@@ -29,6 +30,7 @@ const TABS: Tab[] = [
   { id: 'conteudo',    label: 'Conteúdo',      icon: Layout,         description: 'Vídeo, banners e textos do site público' },
   { id: 'social',      label: 'Redes Sociais', icon: Share2,         description: 'Links das redes sociais exibidos no footer' },
   { id: 'automacoes',  label: 'Automações',    icon: Bot,            description: 'WhatsApp automático: aniversários, pesquisas e avaliações' },
+  { id: 'sitemap',     label: 'Sitemap / GSC', icon: Map,            description: 'Sitemap dinâmico e indexação no Google Search Console' },
   { id: 'sistema',     label: 'Sistema',       icon: Settings,       description: 'SLA, alertas e parâmetros operacionais' },
 ]
 
@@ -169,6 +171,8 @@ export function ConfiguracoesClient({ initialConfigs }: { initialConfigs: Config
   const [configs, setConfigs] = useState<ConfigMap>(initialConfigs)
   const [pending, startTransition] = useTransition()
   const [savedTab, setSavedTab] = useState<string | null>(null)
+  const [indexarStatus, setIndexarStatus] = useState<null | { ok: boolean; data: Record<string, unknown> }>(null)
+  const [indexarLoading, setIndexarLoading] = useState(false)
 
   const set = (key: string) => (val: string) => setConfigs(c => ({ ...c, [key]: val }))
   const get = (key: string) => configs[key] ?? ''
@@ -516,6 +520,173 @@ export function ConfiguracoesClient({ initialConfigs }: { initialConfigs: Config
           </div>
         </div>
       ),
+    },
+
+    /* ── SITEMAP / GSC ── */
+    sitemap: {
+      keys: ['site_url', 'sitemap_frequencia', 'sitemap_prioridade', 'sitemap_include_blog', 'gsc_api_key', 'gsc_site_url', 'indexar_automatico'],
+      content: (() => {
+        const siteUrl = get('site_url') || 'https://twixeventos.com'
+        const sitemapUrl = `${siteUrl.replace(/\/$/, '')}/sitemap.xml`
+
+        const handleIndexar = async () => {
+          setIndexarLoading(true)
+          setIndexarStatus(null)
+          try {
+            const res = await fetch('/api/admin/indexar', { method: 'POST' })
+            const data = await res.json()
+            setIndexarStatus({ ok: res.ok, data })
+          } catch {
+            setIndexarStatus({ ok: false, data: { error: 'Falha na requisição' } })
+          } finally {
+            setIndexarLoading(false)
+          }
+        }
+
+        return (
+          <div className="space-y-5">
+            <SectionTitle description="URL canônica do site usada no sitemap e nas notificações ao Google">URL do Site</SectionTitle>
+            <Field label="URL base do site" hint="Ex: https://twixeventos.com (sem barra no final)" required>
+              <Input value={get('site_url')} onChange={set('site_url')} placeholder="https://twixeventos.com" mono />
+            </Field>
+
+            <div className="flex items-center gap-2 p-3 bg-brand-surface-2 border border-brand-border rounded-xl">
+              <span className="text-brand-muted text-xs">Sitemap público:</span>
+              <a
+                href={sitemapUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-brand-accent text-xs font-mono hover:underline flex items-center gap-1"
+              >
+                {sitemapUrl}
+                <ExternalLink className="size-3" />
+              </a>
+            </div>
+
+            <Divider />
+            <SectionTitle description="Controle a frequência e prioridade das URLs no sitemap.xml">Configurações do Sitemap</SectionTitle>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <Field label="Frequência de atualização" hint="Indica ao Google com que frequência o conteúdo muda">
+                <select
+                  value={get('sitemap_frequencia') || 'weekly'}
+                  onChange={e => set('sitemap_frequencia')(e.target.value)}
+                  className="w-full bg-brand-surface border border-brand-border rounded-lg px-3 py-2.5 text-brand-text text-sm focus:outline-none focus:border-brand-accent transition-colors"
+                >
+                  <option value="always">Sempre (always)</option>
+                  <option value="hourly">Por hora (hourly)</option>
+                  <option value="daily">Diário (daily)</option>
+                  <option value="weekly">Semanal (weekly)</option>
+                  <option value="monthly">Mensal (monthly)</option>
+                  <option value="yearly">Anual (yearly)</option>
+                  <option value="never">Nunca (never)</option>
+                </select>
+              </Field>
+              <Field label="Prioridade padrão" hint="Valor entre 0.0 e 1.0 para páginas de brinquedos">
+                <select
+                  value={get('sitemap_prioridade') || '0.8'}
+                  onChange={e => set('sitemap_prioridade')(e.target.value)}
+                  className="w-full bg-brand-surface border border-brand-border rounded-lg px-3 py-2.5 text-brand-text text-sm focus:outline-none focus:border-brand-accent transition-colors"
+                >
+                  {['1.0','0.9','0.8','0.7','0.6','0.5','0.4','0.3','0.2','0.1'].map(v => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            <div className="flex items-center justify-between p-4 bg-brand-surface-2 rounded-xl border border-brand-border">
+              <div>
+                <p className="text-brand-text text-sm font-medium">Incluir Blog no Sitemap</p>
+                <p className="text-brand-muted text-xs">Ative quando o blog for implementado</p>
+              </div>
+              <Toggle value={get('sitemap_include_blog') || 'false'} onChange={set('sitemap_include_blog')} label="Blog no sitemap" />
+            </div>
+
+            <Divider />
+            <SectionTitle description="Credenciais do Google Search Console para indexação automática via Indexing API">Google Search Console</SectionTitle>
+            <Field label="URL cadastrada no GSC" hint="Deve corresponder exatamente à URL cadastrada no Search Console">
+              <Input value={get('gsc_site_url')} onChange={set('gsc_site_url')} placeholder="https://twixeventos.com" mono />
+            </Field>
+            <Field
+              label="Service Account JSON (chave de API)"
+              hint="Cole o conteúdo completo do arquivo JSON da Service Account do Google Cloud. A conta deve ter permissão de Owner no GSC."
+            >
+              <Textarea
+                value={get('gsc_api_key')}
+                onChange={set('gsc_api_key')}
+                placeholder={'{\n  "type": "service_account",\n  "project_id": "...",\n  "private_key": "-----BEGIN RSA PRIVATE KEY-----\\n..."\n}'}
+                rows={7}
+              />
+            </Field>
+            <div className="flex items-center justify-between p-4 bg-brand-surface-2 rounded-xl border border-brand-border">
+              <div>
+                <p className="text-brand-text text-sm font-medium">Indexação automática</p>
+                <p className="text-brand-muted text-xs">Notifica o Google automaticamente quando um brinquedo é criado ou editado</p>
+              </div>
+              <Toggle value={get('indexar_automatico') || 'false'} onChange={set('indexar_automatico')} label="Indexação automática" />
+            </div>
+
+            <Divider />
+            <SectionTitle description="Envie todas as URLs do sitemap para o Google agora">Indexar Agora</SectionTitle>
+            <div className="p-4 bg-brand-surface-2 rounded-xl border border-brand-border space-y-4">
+              <p className="text-brand-muted text-sm">
+                {get('gsc_api_key')
+                  ? 'Usa a Indexing API v3 com a Service Account configurada para notificar cada URL individualmente.'
+                  : 'Sem Service Account configurada, será enviado um ping ao sitemap.xml para o Google e Bing (método legado).'
+                }
+              </p>
+              <button
+                type="button"
+                onClick={handleIndexar}
+                disabled={indexarLoading}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-accent hover:bg-brand-accent-hover text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-60"
+              >
+                <RefreshCw className={`size-4 ${indexarLoading ? 'animate-spin' : ''}`} />
+                {indexarLoading ? 'Indexando…' : 'Indexar Agora'}
+              </button>
+
+              {indexarStatus && (
+                <div className={`flex items-start gap-3 p-4 rounded-xl border text-sm ${
+                  indexarStatus.ok
+                    ? 'bg-green-500/8 border-green-500/25 text-green-700 dark:text-green-400'
+                    : 'bg-red-500/8 border-red-500/25 text-red-700 dark:text-red-400'
+                }`}>
+                  {indexarStatus.ok
+                    ? <CheckCircle2 className="size-4 mt-0.5 shrink-0" />
+                    : <XCircle className="size-4 mt-0.5 shrink-0" />
+                  }
+                  <div className="space-y-1">
+                    {indexarStatus.data.modo === 'indexing_api' ? (
+                      <>
+                        <p className="font-semibold">Indexing API — concluído</p>
+                        <p>Total: <strong>{String(indexarStatus.data.total)}</strong> URLs &nbsp;|&nbsp; Indexadas: <strong>{String(indexarStatus.data.indexados)}</strong> &nbsp;|&nbsp; Erros: <strong>{(indexarStatus.data.erros as unknown[])?.length ?? 0}</strong></p>
+                      </>
+                    ) : indexarStatus.data.modo === 'ping_sitemap' ? (
+                      <>
+                        <p className="font-semibold">Ping ao sitemap — concluído</p>
+                        <p>Google: {indexarStatus.data.google ? '✅' : '❌'} &nbsp;|&nbsp; Bing: {indexarStatus.data.bing ? '✅' : '❌'}</p>
+                        <p className="text-xs opacity-75">Sitemap: {String(indexarStatus.data.sitemap)}</p>
+                      </>
+                    ) : (
+                      <p>{String(indexarStatus.data.error ?? 'Erro desconhecido')}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 text-sm text-brand-muted">
+              <p className="font-semibold text-brand-text mb-2">📋 Como configurar a Indexing API</p>
+              <ol className="space-y-1 text-xs list-decimal list-inside">
+                <li>Acesse o <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer" className="text-brand-accent hover:underline">Google Cloud Console</a> e crie um projeto</li>
+                <li>Ative a <strong>Web Search Indexing API</strong></li>
+                <li>Crie uma <strong>Service Account</strong> e gere uma chave JSON</li>
+                <li>No <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" className="text-brand-accent hover:underline">Search Console</a>, adicione o e-mail da Service Account como <strong>Owner</strong> do site</li>
+                <li>Cole o conteúdo do arquivo JSON no campo acima</li>
+              </ol>
+            </div>
+          </div>
+        )
+      })(),
     },
 
     /* ── SISTEMA ── */
