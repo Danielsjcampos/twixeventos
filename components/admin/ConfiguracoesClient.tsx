@@ -1,0 +1,581 @@
+'use client'
+
+import { useState, useTransition } from 'react'
+import {
+  Globe, Search, Zap, MessageCircle, Layout, Share2, Settings,
+  Save, Check, Eye, EyeOff, ChevronRight, Layers,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { saveConfigs } from '@/app/actions/configuracoes'
+import { SingleImageUpload } from '@/components/admin/SingleImageUpload'
+import { HeroSlidesEditor } from '@/components/admin/HeroSlidesEditor'
+
+/* ── types ── */
+type ConfigMap = Record<string, string>
+
+interface Tab {
+  id: string
+  label: string
+  icon: React.ElementType
+  description: string
+}
+
+const TABS: Tab[] = [
+  { id: 'geral',       label: 'Geral',        icon: Globe,          description: 'Identidade visual e dados básicos do site' },
+  { id: 'seo',         label: 'SEO',           icon: Search,         description: 'Meta tags, títulos e indexação para buscadores' },
+  { id: 'integracoes', label: 'Integrações',   icon: Zap,            description: 'Analytics, Pixel e motor de IA/busca' },
+  { id: 'whatsapp',    label: 'WhatsApp / API',icon: MessageCircle,  description: 'Número, mensagem padrão e integração 0API' },
+  { id: 'hero',        label: 'Hero / Slides', icon: Layers,         description: 'Slides do banner principal da home — imagens, vídeos ou gradientes' },
+  { id: 'conteudo',    label: 'Conteúdo',      icon: Layout,         description: 'Vídeo, banners e textos do site público' },
+  { id: 'social',      label: 'Redes Sociais', icon: Share2,         description: 'Links das redes sociais exibidos no footer' },
+  { id: 'sistema',     label: 'Sistema',       icon: Settings,       description: 'SLA, alertas e parâmetros operacionais' },
+]
+
+/* ── helpers ── */
+function Field({
+  label, hint, children, required,
+}: { label: string; hint?: string; children: React.ReactNode; required?: boolean }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-sm font-medium text-brand-text">
+        {label}{required && <span className="text-brand-accent ml-0.5">*</span>}
+      </label>
+      {children}
+      {hint && <p className="text-xs text-brand-muted">{hint}</p>}
+    </div>
+  )
+}
+
+function Input({ value, onChange, placeholder, type = 'text', mono = false }: {
+  value: string; onChange: (v: string) => void; placeholder?: string; type?: string; mono?: boolean
+}) {
+  return (
+    <input
+      type={type}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      className={cn(
+        'w-full bg-brand-surface border border-brand-border rounded-lg px-3 py-2.5 text-brand-text placeholder:text-brand-muted text-sm focus:outline-none focus:border-brand-accent transition-colors',
+        mono && 'font-mono'
+      )}
+    />
+  )
+}
+
+function Textarea({ value, onChange, placeholder, rows = 3 }: {
+  value: string; onChange: (v: string) => void; placeholder?: string; rows?: number
+}) {
+  return (
+    <textarea
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      rows={rows}
+      className="w-full bg-brand-surface border border-brand-border rounded-lg px-3 py-2.5 text-brand-text placeholder:text-brand-muted text-sm focus:outline-none focus:border-brand-accent transition-colors resize-none"
+    />
+  )
+}
+
+function Toggle({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+  const on = value === 'true'
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(on ? 'false' : 'true')}
+      className={cn(
+        'relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200',
+        on ? 'bg-brand-accent' : 'bg-brand-surface-2 border border-brand-border'
+      )}
+      aria-label={label}
+    >
+      <span className={cn(
+        'inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200',
+        on ? 'translate-x-6' : 'translate-x-1'
+      )} />
+    </button>
+  )
+}
+
+function SecretInput({ value, onChange, placeholder }: {
+  value: string; onChange: (v: string) => void; placeholder?: string
+}) {
+  const [show, setShow] = useState(false)
+  return (
+    <div className="relative">
+      <input
+        type={show ? 'text' : 'password'}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full bg-brand-surface border border-brand-border rounded-lg px-3 py-2.5 pr-10 text-brand-text placeholder:text-brand-muted text-sm font-mono focus:outline-none focus:border-brand-accent transition-colors"
+      />
+      <button
+        type="button"
+        onClick={() => setShow(s => !s)}
+        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-brand-muted hover:text-brand-text transition-colors"
+      >
+        {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+      </button>
+    </div>
+  )
+}
+
+function SaveBar({ onSave, saving, saved }: { onSave: () => void; saving: boolean; saved: boolean }) {
+  return (
+    <div className="flex items-center justify-end pt-6 border-t border-brand-border mt-8">
+      <button
+        onClick={onSave}
+        disabled={saving}
+        className={cn(
+          'inline-flex items-center gap-2 font-semibold text-sm px-6 py-2.5 rounded-lg transition-all duration-200',
+          saved
+            ? 'bg-green-500/15 text-green-600 border border-green-500/30'
+            : 'bg-brand-accent hover:bg-brand-accent-hover text-white disabled:opacity-60'
+        )}
+      >
+        {saving ? (
+          <span className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        ) : saved ? (
+          <Check className="size-4" />
+        ) : (
+          <Save className="size-4" />
+        )}
+        {saving ? 'Salvando…' : saved ? 'Salvo!' : 'Salvar alterações'}
+      </button>
+    </div>
+  )
+}
+
+function SectionTitle({ children, description }: { children: React.ReactNode; description?: string }) {
+  return (
+    <div className="mb-6">
+      <h3 className="text-brand-text font-semibold text-base">{children}</h3>
+      {description && <p className="text-brand-muted text-sm mt-0.5">{description}</p>}
+    </div>
+  )
+}
+
+function Divider() {
+  return <hr className="border-brand-border my-6" />
+}
+
+/* ═══════════════════════════════════════════
+   MAIN COMPONENT
+══════════════════════════════════════════ */
+export function ConfiguracoesClient({ initialConfigs }: { initialConfigs: ConfigMap }) {
+  const [activeTab, setActiveTab] = useState('geral')
+  const [configs, setConfigs] = useState<ConfigMap>(initialConfigs)
+  const [pending, startTransition] = useTransition()
+  const [savedTab, setSavedTab] = useState<string | null>(null)
+
+  const set = (key: string) => (val: string) => setConfigs(c => ({ ...c, [key]: val }))
+  const get = (key: string) => configs[key] ?? ''
+
+  const save = (keys: string[]) => {
+    const subset = Object.fromEntries(keys.map(k => [k, get(k)]))
+    startTransition(async () => {
+      await saveConfigs(subset)
+      setSavedTab(activeTab)
+      setTimeout(() => setSavedTab(null), 2500)
+    })
+  }
+
+  /* ── Tab contents ── */
+  const tabs: Record<string, { keys: string[]; content: React.ReactNode }> = {
+
+    /* ── GERAL ── */
+    geral: {
+      keys: ['site_nome', 'site_descricao', 'site_telefone', 'site_endereco', 'logo_url', 'favicon_url', 'og_image_url'],
+      content: (
+        <div className="space-y-5">
+          <SectionTitle description="Informações básicas exibidas no site e nos buscadores">Identidade do Site</SectionTitle>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <Field label="Nome do site" required>
+              <Input value={get('site_nome')} onChange={set('site_nome')} placeholder="Twix Eventos" />
+            </Field>
+            <Field label="Telefone / WhatsApp" required>
+              <Input value={get('site_telefone')} onChange={set('site_telefone')} placeholder="5512996498725" mono />
+            </Field>
+          </div>
+          <Field label="Descrição curta" hint="Usada como meta description padrão">
+            <Textarea value={get('site_descricao')} onChange={set('site_descricao')} placeholder="Locação de brinquedos infláveis em São José dos Campos…" />
+          </Field>
+          <Field label="Endereço completo">
+            <Input value={get('site_endereco')} onChange={set('site_endereco')} placeholder="R. Prof. Roberval Fróes, 390 – SJC/SP" />
+          </Field>
+
+          <Divider />
+          <SectionTitle description="Faça upload das imagens principais da sua marca">Imagens e Mídia</SectionTitle>
+
+          <Field label="Logo" hint="Exibida no header. Formatos: PNG ou SVG com fundo transparente">
+            <SingleImageUpload 
+              value={get('logo_url')} 
+              onChange={set('logo_url')} 
+              onRemove={() => set('logo_url')('')} 
+              label="Fazer upload do Logo"
+            />
+          </Field>
+          <Field label="Favicon" hint="Ícone da aba do navegador. Ideal: 32×32 PNG ou ICO">
+            <SingleImageUpload 
+              value={get('favicon_url')} 
+              onChange={set('favicon_url')} 
+              onRemove={() => set('favicon_url')('')} 
+              label="Fazer upload do Favicon"
+              accept=".ico,.png"
+            />
+          </Field>
+          <Field label="Imagem de preview social (OG Image)" hint="Exibida quando o link é compartilhado no WhatsApp, Instagram, etc. Ideal: 1200×630 px">
+            <SingleImageUpload 
+              value={get('og_image_url')} 
+              onChange={set('og_image_url')} 
+              onRemove={() => set('og_image_url')('')} 
+              label="Fazer upload da Imagem OG"
+            />
+          </Field>
+        </div>
+      ),
+    },
+
+    /* ── SEO ── */
+    seo: {
+      keys: ['seo_titulo_padrao', 'seo_template_titulo', 'seo_descricao_padrao', 'seo_palavras_chave', 'google_site_verification', 'robots_indexar'],
+      content: (
+        <div className="space-y-5">
+          <SectionTitle description="Configure como o site aparece nos resultados de busca">Meta Tags e Indexação</SectionTitle>
+          <Field label="Título padrão" hint="Exibido na aba do navegador e no Google. Máx. 60 caracteres">
+            <Input value={get('seo_titulo_padrao')} onChange={set('seo_titulo_padrao')} placeholder="Twix Eventos | Locação de Brinquedos em São José dos Campos" />
+            <p className="text-xs text-brand-muted text-right mt-1">{get('seo_titulo_padrao').length}/60 chars</p>
+          </Field>
+          <Field label="Template de título por página" hint="Use %s para o título da página. Ex: %s | Twix Eventos">
+            <Input value={get('seo_template_titulo')} onChange={set('seo_template_titulo')} placeholder="%s | Twix Eventos" mono />
+          </Field>
+          <Field label="Descrição padrão" hint="Máx. 160 caracteres. Aparece abaixo do título no Google">
+            <Textarea value={get('seo_descricao_padrao')} onChange={set('seo_descricao_padrao')} placeholder="Aluguel de brinquedos infláveis para festas em SJC…" />
+            <p className="text-xs text-brand-muted text-right mt-1">{get('seo_descricao_padrao').length}/160 chars</p>
+          </Field>
+          <Field label="Palavras-chave" hint="Separadas por vírgula. Ex: brinquedos infláveis, locação SJC, festa infantil">
+            <Textarea value={get('seo_palavras_chave')} onChange={set('seo_palavras_chave')} placeholder="brinquedos infláveis, locação, São José dos Campos…" rows={2} />
+          </Field>
+
+          <Divider />
+          <SectionTitle description="Verificação de propriedade e controle de indexação">Verificação e Robôs</SectionTitle>
+          <Field label="Google Search Console — código de verificação" hint="Apenas o valor do atributo content da meta tag">
+            <Input value={get('google_site_verification')} onChange={set('google_site_verification')} placeholder="abc123xyz…" mono />
+          </Field>
+          <div className="flex items-center justify-between p-4 bg-brand-surface-2 rounded-xl border border-brand-border">
+            <div>
+              <p className="text-brand-text text-sm font-medium">Permitir indexação pelo Google</p>
+              <p className="text-brand-muted text-xs">Desative apenas em ambiente de teste</p>
+            </div>
+            <Toggle value={get('robots_indexar') || 'true'} onChange={set('robots_indexar')} label="Indexação Google" />
+          </div>
+        </div>
+      ),
+    },
+
+    /* ── INTEGRAÇÕES ── */
+    integracoes: {
+      keys: ['google_analytics_id', 'google_tag_manager_id', 'facebook_pixel_id', 'ia_motor_nome', 'ia_api_key', 'ia_modelo', 'hotjar_id'],
+      content: (
+        <div className="space-y-5">
+          <SectionTitle description="IDs de rastreamento para análise de tráfego e conversões">Analytics e Rastreamento</SectionTitle>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <Field label="Google Analytics 4 — Measurement ID" hint="Formato: G-XXXXXXXXXX">
+              <Input value={get('google_analytics_id')} onChange={set('google_analytics_id')} placeholder="G-XXXXXXXXXX" mono />
+            </Field>
+            <Field label="Google Tag Manager — Container ID" hint="Formato: GTM-XXXXXXX">
+              <Input value={get('google_tag_manager_id')} onChange={set('google_tag_manager_id')} placeholder="GTM-XXXXXXX" mono />
+            </Field>
+            <Field label="Facebook / Meta Pixel ID">
+              <Input value={get('facebook_pixel_id')} onChange={set('facebook_pixel_id')} placeholder="1234567890123456" mono />
+            </Field>
+            <Field label="Hotjar ID">
+              <Input value={get('hotjar_id')} onChange={set('hotjar_id')} placeholder="1234567" mono />
+            </Field>
+          </div>
+
+          <Divider />
+          <SectionTitle description="Motor de inteligência artificial usado para busca e atendimento no site">IA / Motor de Busca</SectionTitle>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <Field label="Nome do provedor de IA" hint="Ex: OpenAI, Anthropic, Groq, Gemini, DeepSeek">
+              <Input value={get('ia_motor_nome')} onChange={set('ia_motor_nome')} placeholder="OpenAI" />
+            </Field>
+            <Field label="Modelo a usar" hint="Ex: gpt-4o, claude-3-5-sonnet, gemini-1.5-pro">
+              <Input value={get('ia_modelo')} onChange={set('ia_modelo')} placeholder="gpt-4o" mono />
+            </Field>
+          </div>
+          <Field label="API Key do provedor de IA">
+            <SecretInput value={get('ia_api_key')} onChange={set('ia_api_key')} placeholder="sk-…" />
+          </Field>
+        </div>
+      ),
+    },
+
+    /* ── WHATSAPP / 0API ── */
+    whatsapp: {
+      keys: ['whatsapp_numero', 'whatsapp_mensagem_padrao', 'zapi_url', 'zapi_instance_id', 'zapi_token', 'zapi_client_token', 'whatsapp_ativo'],
+      content: (
+        <div className="space-y-5">
+          <SectionTitle description="Número e mensagem usados nos botões de contato do site">WhatsApp Público</SectionTitle>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <Field label="Número do WhatsApp" hint="Formato internacional sem + ou espaços: 5512999990000" required>
+              <Input value={get('whatsapp_numero')} onChange={set('whatsapp_numero')} placeholder="5512996498725" mono />
+            </Field>
+            <div className="flex items-center gap-3 pt-6">
+              <Toggle value={get('whatsapp_ativo') || 'true'} onChange={set('whatsapp_ativo')} label="WhatsApp ativo" />
+              <span className="text-sm text-brand-text">Botão flutuante ativo</span>
+            </div>
+          </div>
+          <Field label="Mensagem padrão" hint="Texto pré-preenchido ao abrir o WhatsApp">
+            <Textarea value={get('whatsapp_mensagem_padrao')} onChange={set('whatsapp_mensagem_padrao')} placeholder="Olá! Gostaria de reservar um brinquedo para meu evento." rows={2} />
+          </Field>
+
+          <Divider />
+          <SectionTitle description="Integração com a plataforma 0API para automações e notificações via WhatsApp">Integração 0API / Z-API</SectionTitle>
+          <div className="p-3 bg-blue-500/8 border border-blue-500/20 rounded-lg text-xs text-blue-600 dark:text-blue-400 mb-4">
+            Estas credenciais são usadas para envio automático de confirmações, lembretes de eventos e follow-ups de leads pelo WhatsApp.
+          </div>
+          <Field label="URL base da API" hint="Ex: https://api.z-api.io/instances/SEU_ID/token/SEU_TOKEN">
+            <Input value={get('zapi_url')} onChange={set('zapi_url')} placeholder="https://api.z-api.io/instances/…" mono />
+          </Field>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <Field label="Instance ID">
+              <Input value={get('zapi_instance_id')} onChange={set('zapi_instance_id')} placeholder="3ABC123…" mono />
+            </Field>
+            <Field label="Token de acesso">
+              <SecretInput value={get('zapi_token')} onChange={set('zapi_token')} placeholder="seu-token-aqui" />
+            </Field>
+          </div>
+          <Field label="Client-Token (header Security)">
+            <SecretInput value={get('zapi_client_token')} onChange={set('zapi_client_token')} placeholder="F…" />
+          </Field>
+        </div>
+      ),
+    },
+
+    /* ── HERO / SLIDES ── */
+    hero: {
+      keys: ['hero_slides'],
+      content: (
+        <div className="space-y-5">
+          <SectionTitle description="Crie e gerencie os slides do banner principal da home. Cada slide pode ter fundo de imagem, vídeo, gradiente ou cor sólida — com título, subtítulo e botões personalizados.">
+            Slides do Hero
+          </SectionTitle>
+          <HeroSlidesEditor initialSlidesJson={get('hero_slides')} />
+        </div>
+      ),
+    },
+
+    /* ── CONTEÚDO ── */
+    conteudo: {
+      keys: ['video_apresentacao', 'banner_ativo', 'banner_texto', 'desconto_seg_qui', 'hero_titulo', 'hero_subtitulo'],
+      content: (
+        <div className="space-y-5">
+          <SectionTitle description="Vídeo exibido na seção de apresentação da página inicial">Vídeo de Apresentação</SectionTitle>
+          <Field label="URL do vídeo YouTube" hint="Aceita: youtube.com/watch?v=ID, youtu.be/ID ou apenas o ID do vídeo">
+            <Input value={get('video_apresentacao')} onChange={set('video_apresentacao')} placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ" mono />
+          </Field>
+          {get('video_apresentacao') && (
+            <div className="rounded-xl overflow-hidden border border-brand-border aspect-video max-w-md bg-brand-surface-2">
+              <iframe
+                src={`https://www.youtube.com/embed/${extractYTId(get('video_apresentacao'))}`}
+                className="w-full h-full border-0"
+                allowFullScreen
+                title="Preview vídeo"
+              />
+            </div>
+          )}
+
+          <Divider />
+          <SectionTitle description="Banner de oferta exibido no topo de todas as páginas">Banner Promocional</SectionTitle>
+          <div className="flex items-center justify-between p-4 bg-brand-surface-2 rounded-xl border border-brand-border">
+            <div>
+              <p className="text-brand-text text-sm font-medium">Exibir banner promocional</p>
+              <p className="text-brand-muted text-xs">Faixa azul no topo do site</p>
+            </div>
+            <Toggle value={get('banner_ativo') || 'true'} onChange={set('banner_ativo')} label="Banner ativo" />
+          </div>
+          <Field label="Texto do banner" hint="Texto exibido na faixa promocional">
+            <Input value={get('banner_texto')} onChange={set('banner_texto')} placeholder="Descontos especiais de segunda a quinta! Reserve agora →" />
+          </Field>
+          <div className="flex items-center justify-between p-4 bg-brand-surface-2 rounded-xl border border-brand-border">
+            <div>
+              <p className="text-brand-text text-sm font-medium">Desconto Seg–Qui</p>
+              <p className="text-brand-muted text-xs">Ativa destaque de preço reduzido nos dias úteis</p>
+            </div>
+            <Toggle value={get('desconto_seg_qui') || 'false'} onChange={set('desconto_seg_qui')} label="Desconto Seg-Qui" />
+          </div>
+
+          <Divider />
+          <SectionTitle description="Textos da seção principal (Hero) da página inicial">Hero da Página Inicial</SectionTitle>
+          <Field label="Título principal" hint="Texto grande em destaque">
+            <Input value={get('hero_titulo')} onChange={set('hero_titulo')} placeholder="DIVERSÃO GARANTIDA PARA O SEU EVENTO" />
+          </Field>
+          <Field label="Subtítulo / descrição">
+            <Textarea value={get('hero_subtitulo')} onChange={set('hero_subtitulo')} placeholder="Mais de 24 brinquedos infláveis e eletrônicos para festas…" rows={2} />
+          </Field>
+        </div>
+      ),
+    },
+
+    /* ── REDES SOCIAIS ── */
+    social: {
+      keys: ['social_instagram', 'social_facebook', 'social_youtube', 'social_tiktok', 'social_google_maps'],
+      content: (
+        <div className="space-y-5">
+          <SectionTitle description="URLs completas dos perfis. Deixe em branco para ocultar o ícone no footer.">Links das Redes Sociais</SectionTitle>
+          <Field label="Instagram">
+            <Input value={get('social_instagram')} onChange={set('social_instagram')} placeholder="https://instagram.com/twixeventos" />
+          </Field>
+          <Field label="Facebook">
+            <Input value={get('social_facebook')} onChange={set('social_facebook')} placeholder="https://facebook.com/twixeventos" />
+          </Field>
+          <Field label="YouTube">
+            <Input value={get('social_youtube')} onChange={set('social_youtube')} placeholder="https://youtube.com/@twixeventos" />
+          </Field>
+          <Field label="TikTok">
+            <Input value={get('social_tiktok')} onChange={set('social_tiktok')} placeholder="https://tiktok.com/@twixeventos" />
+          </Field>
+          <Field label="Google Maps (link da empresa)" hint="Link do Google Maps para a localização da empresa">
+            <Input value={get('social_google_maps')} onChange={set('social_google_maps')} placeholder="https://maps.app.goo.gl/…" />
+          </Field>
+        </div>
+      ),
+    },
+
+    /* ── SISTEMA ── */
+    sistema: {
+      keys: ['sla_followup_horas', 'email_admin', 'email_notificacoes', 'eventos_antecedencia_dias', 'max_brinquedos_orcamento'],
+      content: (
+        <div className="space-y-5">
+          <SectionTitle description="Parâmetros operacionais do sistema de CRM e gestão">Alertas e SLA</SectionTitle>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <Field label="SLA de Follow-up (horas)" hint="Horas sem interação para gerar alerta de atenção no lead">
+              <Input value={get('sla_followup_horas')} onChange={set('sla_followup_horas')} placeholder="24" type="number" />
+            </Field>
+            <Field label="Antecedência de eventos (dias)" hint="Dias antes do evento para alertas no dashboard">
+              <Input value={get('eventos_antecedencia_dias')} onChange={set('eventos_antecedencia_dias')} placeholder="7" type="number" />
+            </Field>
+            <Field label="Máx. brinquedos por orçamento" hint="Limite de itens no carrinho de cotação">
+              <Input value={get('max_brinquedos_orcamento')} onChange={set('max_brinquedos_orcamento')} placeholder="10" type="number" />
+            </Field>
+          </div>
+
+          <Divider />
+          <SectionTitle description="E-mails para notificações automáticas do sistema">Notificações por E-mail</SectionTitle>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <Field label="E-mail do administrador">
+              <Input value={get('email_admin')} onChange={set('email_admin')} placeholder="admin@twixeventos.com" type="email" />
+            </Field>
+            <Field label="E-mail de notificações" hint="Recebe alertas de novos leads e orçamentos">
+              <Input value={get('email_notificacoes')} onChange={set('email_notificacoes')} placeholder="notificacoes@twixeventos.com" type="email" />
+            </Field>
+          </div>
+
+          <Divider />
+          <div className="bg-brand-surface-2 rounded-xl border border-brand-border p-4 space-y-3">
+            <p className="text-brand-text text-sm font-semibold">Acesso Admin</p>
+            <p className="text-brand-muted text-xs">Para alterar a senha do admin, gere um novo hash:</p>
+            <code className="block bg-brand-bg border border-brand-border rounded-lg p-3 text-xs text-green-600 font-mono">
+              node -e &quot;require(&apos;bcryptjs&apos;).hash(&apos;novasenha&apos;,12).then(console.log)&quot;
+            </code>
+            <p className="text-brand-muted text-xs">Cole o hash gerado diretamente na tabela <code className="text-brand-text">admin_users</code> no NeonDB.</p>
+          </div>
+        </div>
+      ),
+    },
+  }
+
+  const current = tabs[activeTab]
+
+  return (
+    <div className="flex flex-col md:flex-row gap-0 md:gap-8">
+
+      {/* ── Mobile: horizontal scroll tabs ── */}
+      <div className="md:hidden -mx-4 px-4 mb-6">
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+          {TABS.map(tab => {
+            const Icon = tab.icon
+            const isActive = activeTab === tab.id
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={cn(
+                  'flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-150 border shrink-0',
+                  isActive
+                    ? 'bg-brand-accent text-white border-brand-accent'
+                    : 'text-brand-muted border-brand-border hover:text-brand-text hover:bg-brand-surface-2'
+                )}
+              >
+                <Icon className="size-3.5 shrink-0" />
+                {tab.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* ── Desktop: sidebar nav ── */}
+      <nav className="hidden md:flex flex-col w-52 shrink-0 gap-0.5 pt-1 self-start sticky top-6">
+        {TABS.map(tab => {
+          const Icon = tab.icon
+          const isActive = activeTab === tab.id
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 text-left',
+                isActive
+                  ? 'bg-brand-accent text-white'
+                  : 'text-brand-muted hover:text-brand-text hover:bg-brand-surface-2'
+              )}
+            >
+              <Icon className="size-4 shrink-0" />
+              <span className="flex-1">{tab.label}</span>
+              {isActive && <ChevronRight className="size-3 opacity-70" />}
+            </button>
+          )
+        })}
+      </nav>
+
+      {/* ── Content area ── */}
+      <div className="flex-1 min-w-0">
+        {/* Tab header */}
+        <div className="mb-6 pb-5 border-b border-brand-border">
+          <h2 className="text-xl font-bold text-brand-text">
+            {TABS.find(t => t.id === activeTab)?.label}
+          </h2>
+          <p className="text-brand-muted text-sm mt-1">
+            {TABS.find(t => t.id === activeTab)?.description}
+          </p>
+        </div>
+
+        {/* Tab content */}
+        <div>{current.content}</div>
+
+        <SaveBar
+          onSave={() => save(current.keys)}
+          saving={pending}
+          saved={savedTab === activeTab}
+        />
+
+        {/* Extra bottom padding so content clears mobile nav bar */}
+        <div className="h-20 md:h-8" />
+      </div>
+    </div>
+  )
+}
+
+/* ── util ── */
+function extractYTId(url: string): string {
+  if (!url) return ''
+  const short = url.match(/youtu\.be\/([^?&]+)/)
+  if (short) return short[1]
+  const long = url.match(/(?:v=|\/embed\/)([^?&/]+)/)
+  if (long) return long[1]
+  if (/^[A-Za-z0-9_-]{11}$/.test(url.trim())) return url.trim()
+  return ''
+}
