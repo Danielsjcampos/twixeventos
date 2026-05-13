@@ -1,14 +1,12 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import {
   Plus, Trash2, ChevronUp, ChevronDown, ChevronDown as Expand,
   Image as ImageIcon, Video, Palette, Droplets,
-  Eye, EyeOff, Save, Check, GripVertical,
+  Eye, EyeOff,
 } from 'lucide-react'
-import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { saveConfigs } from '@/app/actions/configuracoes'
 import { SingleImageUpload } from './SingleImageUpload'
 import type { HeroSlide } from '@/types'
 
@@ -51,47 +49,45 @@ const TIPO_ICONS = {
 
 interface Props {
   initialSlidesJson: string
+  onChange: (json: string) => void
 }
 
-export function HeroSlidesEditor({ initialSlidesJson }: Props) {
+export function HeroSlidesEditor({ initialSlidesJson, onChange }: Props) {
   const [slides, setSlides] = useState<HeroSlide[]>(() => {
     try { return JSON.parse(initialSlidesJson || '[]') } catch { return [] }
   })
   const [expanded, setExpanded] = useState<string | null>(null)
-  const [pending, startTransition] = useTransition()
-  const [saved, setSaved] = useState(false)
+
+  const mutate = (fn: (prev: HeroSlide[]) => HeroSlide[]) => {
+    setSlides(prev => {
+      const next = fn(prev)
+      onChange(JSON.stringify(next))
+      return next
+    })
+  }
 
   const update = (id: string, patch: Partial<HeroSlide>) =>
-    setSlides(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s))
+    mutate(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s))
 
   const add = () => {
     const s = newSlide()
-    setSlides(prev => [...prev, s])
+    mutate(prev => [...prev, s])
     setExpanded(s.id)
   }
 
   const remove = (id: string) => {
-    setSlides(prev => prev.filter(s => s.id !== id))
+    mutate(prev => prev.filter(s => s.id !== id))
     if (expanded === id) setExpanded(null)
   }
 
   const move = (id: string, dir: -1 | 1) => {
-    setSlides(prev => {
+    mutate(prev => {
       const i = prev.findIndex(s => s.id === id)
       const j = i + dir
       if (j < 0 || j >= prev.length) return prev
       const next = [...prev]
       ;[next[i], next[j]] = [next[j], next[i]]
       return next
-    })
-  }
-
-  const save = () => {
-    startTransition(async () => {
-      await saveConfigs({ hero_slides: JSON.stringify(slides) })
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2500)
-      toast.success('Slides do hero salvos!')
     })
   }
 
@@ -380,23 +376,10 @@ export function HeroSlidesEditor({ initialSlidesJson }: Props) {
         )
       })}
 
-      {/* Save bar */}
       {slides.length > 0 && (
-        <div className="flex items-center justify-end pt-4 border-t border-brand-border mt-2">
-          <button
-            onClick={save}
-            disabled={pending}
-            className={cn(
-              'inline-flex items-center gap-2 font-semibold text-sm px-6 py-2.5 rounded-lg transition-all duration-200',
-              saved
-                ? 'bg-green-500/15 text-green-500 border border-green-500/30'
-                : 'bg-brand-accent hover:bg-brand-accent-hover text-white disabled:opacity-60'
-            )}
-          >
-            {pending ? <span className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : saved ? <Check size={16} /> : <Save size={16} />}
-            {pending ? 'Salvando…' : saved ? 'Salvo!' : 'Salvar slides'}
-          </button>
-        </div>
+        <p className="text-xs text-brand-muted text-right pt-2">
+          Clique em <strong>Salvar alterações</strong> abaixo para persistir os slides.
+        </p>
       )}
     </div>
   )

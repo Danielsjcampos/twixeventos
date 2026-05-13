@@ -362,7 +362,7 @@ export function ConfiguracoesClient({ initialConfigs }: { initialConfigs: Config
           <SectionTitle description="Crie e gerencie os slides do banner principal da home. Cada slide pode ter fundo de imagem, vídeo, gradiente ou cor sólida — com título, subtítulo e botões personalizados.">
             Slides do Hero
           </SectionTitle>
-          <HeroSlidesEditor initialSlidesJson={get('hero_slides')} />
+          <HeroSlidesEditor initialSlidesJson={get('hero_slides')} onChange={set('hero_slides')} />
         </div>
       ),
     },
