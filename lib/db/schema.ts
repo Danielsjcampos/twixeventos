@@ -204,6 +204,76 @@ export const configuracoes = pgTable('configuracoes', {
 })
 
 // ============================================
+// clientes
+// ============================================
+export const clientes = pgTable('clientes', {
+  id:               uuid('id').primaryKey().defaultRandom(),
+  nome:             text('nome').notNull(),
+  telefone:         text('telefone').notNull().unique(),
+  email:            text('email'),
+  cpf:              text('cpf'),
+  dataNascimento:   date('data_nascimento'),
+  endereco:         text('endereco'),
+  cidade:           text('cidade'),
+  origem:           text('origem').default('site'),
+  tipoCliente:      text('tipo_cliente').default('fisica'), // fisica | empresa | cerimonialista | locador
+  nomeEmpresa:      text('nome_empresa'),
+  observacoes:      text('observacoes'),
+  ativo:            boolean('ativo').default(true).notNull(),
+  totalEventos:     integer('total_eventos').default(0).notNull(),
+  ultimoEvento:     date('ultimo_evento'),
+  createdAt:        timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:        timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('idx_clientes_telefone').on(t.telefone),
+  index('idx_clientes_nome').on(t.nome),
+  index('idx_clientes_ativo').on(t.ativo),
+])
+
+// ============================================
+// datas_comemorativas
+// ============================================
+export const datasComecorativas = pgTable('datas_comemorativas', {
+  id:          uuid('id').primaryKey().defaultRandom(),
+  clienteId:   uuid('cliente_id').notNull().references(() => clientes.id, { onDelete: 'cascade' }),
+  nome:        text('nome').notNull(),         // Nome do aniversariante
+  relacao:     text('relacao').notNull(),      // filho, filha, conjuge, proprio, etc
+  dataNasc:    date('data_nasc').notNull(),    // Data de nascimento
+  anoNasc:     integer('ano_nasc'),            // Para calcular idade
+  observacoes: text('observacoes'),
+  createdAt:   timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('idx_dc_cliente').on(t.clienteId),
+  index('idx_dc_data').on(t.dataNasc),
+])
+
+// ============================================
+// lancamentos_financeiros (avulsos)
+// ============================================
+export const lancamentosFinanceiros = pgTable('lancamentos_financeiros', {
+  id:          uuid('id').primaryKey().defaultRandom(),
+  eventoId:    uuid('evento_id').references(() => eventos.id, { onDelete: 'set null' }),
+  monitorId:   uuid('monitor_id').references(() => monitores.id, { onDelete: 'set null' }),
+  tipo:        text('tipo').notNull(), // receita | despesa | retirada_socio | pagamento_monitor
+  descricao:   text('descricao').notNull(),
+  valor:       decimal('valor', { precision: 10, scale: 2 }).notNull(),
+  forma:       text('forma').default('pix'), // pix | dinheiro | transferencia | cartao
+  status:      text('status').default('pago').notNull(), // pago | pendente | cancelado
+  data:        date('data').notNull(),
+  categoria:   text('categoria'), // combustivel, alimentacao, material, etc
+  comprovante: text('comprovante'),
+  observacoes: text('observacoes'),
+  criadoPor:   text('criado_por'),
+  createdAt:   timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:   timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('idx_lf_data').on(t.data),
+  index('idx_lf_tipo').on(t.tipo),
+  index('idx_lf_evento').on(t.eventoId),
+  index('idx_lf_status').on(t.status),
+])
+
+// ============================================
 // admin_users
 // ============================================
 export const adminUsers = pgTable('admin_users', {
@@ -243,4 +313,17 @@ export const eventoMonitoresRelations = relations(eventoMonitores, ({ one }) => 
 
 export const pagamentosRelations = relations(pagamentos, ({ one }) => ({
   evento: one(eventos, { fields: [pagamentos.eventoId], references: [eventos.id] }),
+}))
+
+export const clientesRelations = relations(clientes, ({ many }) => ({
+  datasComecorativas: many(datasComecorativas),
+}))
+
+export const datasComecorativasRelations = relations(datasComecorativas, ({ one }) => ({
+  cliente: one(clientes, { fields: [datasComecorativas.clienteId], references: [clientes.id] }),
+}))
+
+export const lancamentosFinanceirosRelations = relations(lancamentosFinanceiros, ({ one }) => ({
+  evento:  one(eventos,   { fields: [lancamentosFinanceiros.eventoId],  references: [eventos.id] }),
+  monitor: one(monitores, { fields: [lancamentosFinanceiros.monitorId], references: [monitores.id] }),
 }))

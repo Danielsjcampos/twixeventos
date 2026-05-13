@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import {
   Globe, Search, Zap, MessageCircle, Layout, Share2, Settings,
-  Save, Check, Eye, EyeOff, ChevronRight, Layers,
+  Save, Check, Eye, EyeOff, ChevronRight, Layers, Bot,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { saveConfigs } from '@/app/actions/configuracoes'
@@ -28,6 +28,7 @@ const TABS: Tab[] = [
   { id: 'hero',        label: 'Hero / Slides', icon: Layers,         description: 'Slides do banner principal da home — imagens, vídeos ou gradientes' },
   { id: 'conteudo',    label: 'Conteúdo',      icon: Layout,         description: 'Vídeo, banners e textos do site público' },
   { id: 'social',      label: 'Redes Sociais', icon: Share2,         description: 'Links das redes sociais exibidos no footer' },
+  { id: 'automacoes',  label: 'Automações',    icon: Bot,            description: 'WhatsApp automático: aniversários, pesquisas e avaliações' },
   { id: 'sistema',     label: 'Sistema',       icon: Settings,       description: 'SLA, alertas e parâmetros operacionais' },
 ]
 
@@ -440,6 +441,79 @@ export function ConfiguracoesClient({ initialConfigs }: { initialConfigs: Config
           <Field label="Google Maps (link da empresa)" hint="Link do Google Maps para a localização da empresa">
             <Input value={get('social_google_maps')} onChange={set('social_google_maps')} placeholder="https://maps.app.goo.gl/…" />
           </Field>
+        </div>
+      ),
+    },
+
+    /* ── AUTOMAÇÕES WhatsApp ── */
+    automacoes: {
+      keys: [
+        'whatsapp_api_url', 'whatsapp_token', 'whatsapp_instance', 'whatsapp_ativo',
+        'aniversario_dias_antes', 'aniversario_mensagem',
+        'pesquisa_ativo', 'pesquisa_horas_apos', 'pesquisa_mensagem', 'pesquisa_nota_minima',
+        'google_review_link',
+      ],
+      content: (
+        <div className="space-y-5">
+          <SectionTitle description="Configure a API do WhatsApp para envio automático de mensagens">Conexão API WhatsApp</SectionTitle>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <Field label="Ativar automação WhatsApp">
+              <Toggle value={get('whatsapp_ativo') || 'false'} onChange={set('whatsapp_ativo')} label="Automação ativa" />
+            </Field>
+            <Field label="URL da API" hint="Ex: https://api.0api.com ou similar">
+              <Input value={get('whatsapp_api_url')} onChange={set('whatsapp_api_url')} placeholder="https://api.0api.com" mono />
+            </Field>
+            <Field label="Instance ID">
+              <Input value={get('whatsapp_instance')} onChange={set('whatsapp_instance')} placeholder="instance123" mono />
+            </Field>
+            <Field label="Token de autenticação">
+              <Input value={get('whatsapp_token')} onChange={set('whatsapp_token')} placeholder="Bearer token..." mono type="password" />
+            </Field>
+          </div>
+
+          <Divider />
+          <SectionTitle description="Mensagem automática de parabéns para aniversários de clientes">🎂 Mensagens de Aniversário</SectionTitle>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <Field label="Dias de antecedência" hint="Quantos dias antes do aniversário enviar a mensagem">
+              <Input value={get('aniversario_dias_antes')} onChange={set('aniversario_dias_antes')} placeholder="3" type="number" />
+            </Field>
+          </div>
+          <Field label="Mensagem de aniversário" hint="Use {nome} para o nome do cliente e {aniversariante} para o nome do aniversariante">
+            <Textarea value={get('aniversario_mensagem')} onChange={set('aniversario_mensagem')} rows={4}
+              placeholder="Olá {nome}! A Twix Eventos deseja um feliz aniversário para {aniversariante}! 🎉 Que seja um dia especial!" />
+          </Field>
+
+          <Divider />
+          <SectionTitle description="Pesquisa automática enviada após realização dos eventos">⭐ Pesquisa Pós-Evento</SectionTitle>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <Field label="Ativar pesquisa pós-evento">
+              <Toggle value={get('pesquisa_ativo') || 'false'} onChange={set('pesquisa_ativo')} label="Pesquisa ativa" />
+            </Field>
+            <Field label="Horas após o evento" hint="Quantas horas após o evento enviar a pesquisa">
+              <Input value={get('pesquisa_horas_apos')} onChange={set('pesquisa_horas_apos')} placeholder="24" type="number" />
+            </Field>
+            <Field label="Nota mínima para Google Review" hint="Se a resposta for maior ou igual, envia link do Google">
+              <input type="number" min="1" max="5" value={get('pesquisa_nota_minima')} onChange={e => set('pesquisa_nota_minima')(e.target.value)} placeholder="4"
+                className="w-full bg-brand-bg border border-brand-border rounded-xl px-3 py-2.5 text-sm text-brand-text placeholder:text-brand-muted/40 focus:outline-none focus:ring-2 focus:ring-brand-accent/40 focus:border-brand-accent transition"
+              />
+            </Field>
+            <Field label="Link do Google Meu Negócio">
+              <Input value={get('google_review_link')} onChange={set('google_review_link')} placeholder="https://g.page/r/..." mono />
+            </Field>
+          </div>
+          <Field label="Mensagem da pesquisa" hint="Use {nome} para o nome do cliente">
+            <Textarea value={get('pesquisa_mensagem')} onChange={set('pesquisa_mensagem')} rows={4}
+              placeholder="Olá {nome}! Esperamos que sua festa tenha sido incrível! Como foi sua experiência com a Twix Eventos? (Responda de 1 a 5)" />
+          </Field>
+
+          <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 text-sm text-brand-muted">
+            <p className="font-semibold text-brand-text mb-1">📌 Variáveis disponíveis nas mensagens:</p>
+            <ul className="space-y-1 text-xs mt-2">
+              <li><code className="text-blue-400">{'{nome}'}</code> — Nome do cliente</li>
+              <li><code className="text-blue-400">{'{aniversariante}'}</code> — Nome do aniversariante (apenas em mensagens de aniversário)</li>
+              <li><code className="text-blue-400">{'{google_link}'}</code> — Link do Google Meu Negócio (apenas na pesquisa)</li>
+            </ul>
+          </div>
         </div>
       ),
     },

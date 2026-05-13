@@ -3,11 +3,12 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { DragDropContext, Droppable, type DropResult } from '@hello-pangea/dnd'
 import { toast } from 'sonner'
-import { Search, Filter, TrendingUp, TrendingDown, Users, Package, X } from 'lucide-react'
+import { Search, Filter, TrendingUp, TrendingDown, Users, Package, X, Plus } from 'lucide-react'
 import { STATUS_KANBAN, formatCurrency } from '@/lib/utils'
 import { KanbanCard } from './KanbanCard'
 import { LeadModal } from './LeadModal'
 import { EventoRapidoModal } from './EventoRapidoModal'
+import { NovoLeadModal } from './NovoLeadModal'
 import { Button } from '@/components/ui/button'
 import type { Lead, LeadComInteracoes, KanbanColumn } from '@/types'
 
@@ -45,6 +46,7 @@ export function KanbanBoard({ initialLeads, stats }: Props) {
   const [leads, setLeads] = useState<Lead[]>(initialLeads ?? [])
   const [selectedLead, setSelectedLead] = useState<LeadComInteracoes | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const [novoLeadOpen, setNovoLeadOpen] = useState(false)
 
   // Filtros
   const [search, setSearch] = useState('')
@@ -217,6 +219,20 @@ export function KanbanBoard({ initialLeads, stats }: Props) {
 
   return (
     <>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h1 className="text-xl font-bold text-brand-text">CRM — Leads</h1>
+          <p className="text-xs text-brand-muted mt-0.5">{stats.total} leads no total</p>
+        </div>
+        <button
+          onClick={() => setNovoLeadOpen(true)}
+          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-lg shadow-blue-500/20"
+        >
+          <Plus size={16} /> Novo Lead
+        </button>
+      </div>
+
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
         <KpiCard
@@ -410,6 +426,13 @@ export function KanbanBoard({ initialLeads, stats }: Props) {
         lead={selectedLead}
         onClose={() => { setModalOpen(false); setSelectedLead(null) }}
         onUpdate={handleModalUpdate}
+      />
+
+      {/* Novo Lead Modal */}
+      <NovoLeadModal
+        open={novoLeadOpen}
+        onClose={() => setNovoLeadOpen(false)}
+        onCreated={(lead) => setLeads(prev => [lead, ...prev])}
       />
     </>
   )

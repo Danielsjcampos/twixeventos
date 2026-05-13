@@ -5,13 +5,14 @@ import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import {
   LayoutDashboard, Users, Package, Calendar,
-  Settings, LogOut, UserCheck, DollarSign, UserCog,
+  Settings, LogOut, UserCheck, DollarSign, UserCog, Contact,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
   { href: '/admin',               label: 'Dashboard',        icon: LayoutDashboard, exact: true },
   { href: '/admin/leads',         label: 'Leads / CRM',      icon: Users },
+  { href: '/admin/clientes',      label: 'Clientes',         icon: Contact },
   { href: '/admin/brinquedos',    label: 'Brinquedos',       icon: Package },
   { href: '/admin/eventos',       label: 'Eventos',          icon: Calendar },
   { href: '/admin/monitores',     label: 'Monitores',        icon: UserCheck },
@@ -20,7 +21,9 @@ const NAV_ITEMS = [
   { href: '/admin/configuracoes', label: 'Configurações',    icon: Settings },
 ]
 
-const BOTTOM_NAV = NAV_ITEMS.slice(0, 5)
+const BOTTOM_NAV = [
+  NAV_ITEMS[0], NAV_ITEMS[1], NAV_ITEMS[2], NAV_ITEMS[4], NAV_ITEMS[6],
+]
 
 export function Sidebar() {
   const pathname = usePathname()

@@ -6,8 +6,9 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   PieChart, Pie, Cell, Legend,
 } from 'recharts'
-import { DollarSign, CalendarDays, Package, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react'
+import { DollarSign, CalendarDays, Package, TrendingUp, ChevronLeft, ChevronRight, List } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { LancamentosClient } from './LancamentosClient'
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
@@ -66,6 +67,15 @@ interface ChartAnual {
   festas: number
 }
 
+type Lancamento = {
+  id: string; tipo: string; descricao: string; valor: string
+  forma: string | null; status: string; data: string
+  categoria: string | null; observacoes: string | null
+  eventoId: string | null; monitorId: string | null
+  nomeEvento: string | null; nomeMonitor: string | null
+  criadoPor: string | null; createdAt: string
+}
+
 interface Props {
   anoInicial: number
   mesInicial: number
@@ -74,6 +84,7 @@ interface Props {
   rankingBrinquedosInicial: Brinquedo[]
   origensInicial: Origem[]
   receitaAnual: ChartAnual[]
+  lancamentosInicial: Lancamento[]
 }
 
 function KpiCard({ titulo, valor, icone, cor, prefix = '', decimals = 0 }: {
@@ -115,7 +126,7 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 export function FinanceiroClient({
   anoInicial, mesInicial,
   kpisInicial, eventosInicial, rankingBrinquedosInicial, origensInicial,
-  receitaAnual,
+  receitaAnual, lancamentosInicial,
 }: Props) {
   const [mes, setMes] = useState(mesInicial)
   const [ano, setAno] = useState(anoInicial)
@@ -123,7 +134,9 @@ export function FinanceiroClient({
   const [eventos, setEventos] = useState(eventosInicial)
   const [ranking, setRanking] = useState(rankingBrinquedosInicial)
   const [origens, setOrigens] = useState(origensInicial)
+  const [lancamentos, setLancamentos] = useState(lancamentosInicial)
   const [loading, setLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState<'visao_geral' | 'lancamentos'>('visao_geral')
 
   const chartAnual = receitaAnual.map(d => ({
     name: MESES_ABREV[d.mes - 1],
@@ -136,14 +149,19 @@ export function FinanceiroClient({
   async function navigate(novoMes: number, novoAno: number) {
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/financeiro?mes=${novoMes}&ano=${novoAno}`)
-      const data = await res.json()
+      const [finRes, lanRes] = await Promise.all([
+        fetch(`/api/admin/financeiro?mes=${novoMes}&ano=${novoAno}`),
+        fetch(`/api/admin/lancamentos?mes=${novoMes}&ano=${novoAno}`),
+      ])
+      const data = await finRes.json()
+      const lanData = await lanRes.json()
       setMes(novoMes)
       setAno(novoAno)
       setKpis(data.kpis)
       setEventos(data.eventos)
       setRanking(data.ranking)
       setOrigens(data.origens)
+      setLancamentos(lanData)
     } finally {
       setLoading(false)
     }
@@ -196,6 +214,36 @@ export function FinanceiroClient({
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-1 bg-brand-surface-2 border border-brand-border rounded-xl p-1 w-fit">
+        {[
+          { id: 'visao_geral', label: 'Visão Geral', icon: TrendingUp },
+          { id: 'lancamentos', label: 'Lançamentos Avulsos', icon: List },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as typeof activeTab)}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+              activeTab === tab.id
+                ? 'bg-brand-surface border border-brand-border text-brand-text shadow-sm'
+                : 'text-brand-muted hover:text-brand-text',
+            )}
+          >
+            <tab.icon size={14} /> {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'lancamentos' && (
+        <LancamentosClient
+          lancamentos={lancamentos}
+          mes={mes} ano={ano}
+          onRefresh={navigate}
+        />
+      )}
+
+      {activeTab === 'visao_geral' && <>
       {/* KPI cards */}
       <div className={cn('grid grid-cols-2 lg:grid-cols-5 gap-3 transition-opacity duration-200', loading && 'opacity-50')}>
         <KpiCard titulo="Total Faturado" valor={kpis.totalFaturado} icone={<DollarSign className="size-4" />} cor="#34D399" prefix="R$ " decimals={0} />
@@ -379,6 +427,7 @@ export function FinanceiroClient({
           </div>
         </div>
       </div>
+      </> /* end activeTab === 'visao_geral' */}
     </div>
   )
 }

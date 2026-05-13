@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { getKpisMes, getReceitaPorMes, getRankingBrinquedosMes, getOrigemClientesMes, getEventosMes } from '@/lib/db/queries/financeiro'
+import { getLancamentosMes } from '@/lib/db/queries/lancamentos'
 import { FinanceiroClient } from '@/components/admin/FinanceiroClient'
 
 export const metadata: Metadata = { title: 'Financeiro' }
@@ -11,12 +12,13 @@ async function FinanceiroContent() {
   const mes = hoje.getMonth() + 1
   const ano = hoje.getFullYear()
 
-  const [kpis, eventos, ranking, origens, receitaAnual] = await Promise.all([
+  const [kpis, eventos, ranking, origens, receitaAnual, lancamentos] = await Promise.all([
     getKpisMes(mes, ano),
     getEventosMes(mes, ano),
     getRankingBrinquedosMes(mes, ano),
     getOrigemClientesMes(mes, ano),
     getReceitaPorMes(ano),
+    getLancamentosMes(mes, ano),
   ])
 
   return (
@@ -28,6 +30,8 @@ async function FinanceiroContent() {
       rankingBrinquedosInicial={ranking}
       origensInicial={origens}
       receitaAnual={receitaAnual}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      lancamentosInicial={lancamentos as any}
     />
   )
 }

@@ -1,3 +1,7 @@
 {
-  "crons": [{ "path": "/api/cron/followup", "schedule": "0 0 * * *" }]
+  "crons": [
+    { "path": "/api/cron/followup",           "schedule": "0 0 * * *" },
+    { "path": "/api/cron/aniversarios",        "schedule": "0 9 * * *" },
+    { "path": "/api/cron/pesquisa-pos-evento", "schedule": "0 * * * *" }
+  ]
 }
