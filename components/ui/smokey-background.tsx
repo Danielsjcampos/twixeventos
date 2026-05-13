@@ -69,7 +69,7 @@ export function SmokeyBackground({
   backdropBlurAmount = "sm",
   color = "#1E40AF", // Default dark blue
   className = "",
-}: SmokeyBackgroundProps): JSX.Element {
+}: SmokeyBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isHovering, setIsHovering] = useState(false);
