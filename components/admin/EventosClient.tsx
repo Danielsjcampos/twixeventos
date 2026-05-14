@@ -1,9 +1,29 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { Plus, ChevronDown, ChevronUp, Pencil, Trash2, DollarSign, Users, CheckSquare, X, Check } from 'lucide-react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
+import { Plus, ChevronDown, ChevronUp, Pencil, Trash2, X, Check, Search, UserPlus, UserCheck, Coins, Medal, Star, Gem } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn, formatCurrency } from '@/lib/utils'
+
+// ─── Loyalty tiers ────────────────────────────────────────────────────────────
+function getLoyaltyTier(totalEventos: number) {
+  if (totalEventos >= 8) return { label: 'Diamante', icon: Gem,   color: 'text-cyan-400',   bg: 'bg-cyan-500/10 border-cyan-500/25',   pct: 8 }
+  if (totalEventos >= 5) return { label: 'Ouro',     icon: Star,  color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/25', pct: 7 }
+  if (totalEventos >= 3) return { label: 'Prata',    icon: Medal, color: 'text-slate-300',  bg: 'bg-slate-400/10 border-slate-400/25',  pct: 6 }
+  if (totalEventos >= 1) return { label: 'Bronze',   icon: Medal, color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/25', pct: 5 }
+  return null
+}
+
+// ─── ClienteSearchResult type ─────────────────────────────────────────────────
+interface ClienteResult {
+  id: string
+  nome: string
+  telefone: string
+  email: string | null
+  cidade: string | null
+  totalEventos: number
+  cashbackSaldo: string | null
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -613,6 +633,285 @@ const emptyForm: EventoFormData = {
   observacoes: '',
 }
 
+// ─── ClienteSelector ─────────────────────────────────────────────────────────
+
+function ClienteSelector({ onSelect, disabled }: {
+  onSelect: (c: ClienteResult | null) => void
+  disabled?: boolean
+}) {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<ClienteResult[]>([])
+  const [loading, setLoading] = useState(false)
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [selected, setSelected] = useState<ClienteResult | null>(null)
+  const [modoNovo, setModoNovo] = useState(false)
+  const [novoForm, setNovoForm] = useState({ nome: '', telefone: '', email: '', cidade: '' })
+  const [criando, setCriando] = useState(false)
+  const [descontoCashback, setDescontoCashback] = useState(0)
+  const dropRef = useRef<HTMLDivElement>(null)
+
+  const buscar = useCallback(async (q: string) => {
+    if (q.length < 2) { setResults([]); setShowDropdown(false); return }
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/admin/clientes?search=${encodeURIComponent(q)}`)
+      const data: ClienteResult[] = await res.json()
+      setResults(data.slice(0, 6))
+      setShowDropdown(true)
+    } catch { /* silencioso */ }
+    finally { setLoading(false) }
+  }, [])
+
+  // Debounce busca
+  useEffect(() => {
+    const t = setTimeout(() => buscar(query), 280)
+    return () => clearTimeout(t)
+  }, [query, buscar])
+
+  // Fecha dropdown ao clicar fora
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropRef.current && !dropRef.current.contains(e.target as Node)) setShowDropdown(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const selecionar = (c: ClienteResult) => {
+    setSelected(c)
+    setDescontoCashback(0)
+    setQuery('')
+    setShowDropdown(false)
+    setModoNovo(false)
+    onSelect(c)
+  }
+
+  const limpar = () => {
+    setSelected(null)
+    setDescontoCashback(0)
+    setQuery('')
+    setModoNovo(false)
+    onSelect(null)
+  }
+
+  const criarNovo = async () => {
+    if (!novoForm.nome || !novoForm.telefone) { toast.error('Nome e telefone obrigatórios'); return }
+    setCriando(true)
+    try {
+      const res = await fetch('/api/admin/clientes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(novoForm),
+      })
+      if (!res.ok) throw new Error((await res.json()).error ?? 'Erro')
+      const novo: ClienteResult = await res.json()
+      toast.success('Cliente cadastrado!')
+      selecionar({ ...novo, totalEventos: 0, cashbackSaldo: '0' })
+      setModoNovo(false)
+      setNovoForm({ nome: '', telefone: '', email: '', cidade: '' })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao cadastrar')
+    } finally { setCriando(false) }
+  }
+
+  const aplicarDesconto = () => {
+    if (!selected) return
+    const saldo = parseFloat(selected.cashbackSaldo ?? '0')
+    setDescontoCashback(saldo)
+    onSelect({ ...selected, _descontoCashback: saldo } as ClienteResult & { _descontoCashback: number })
+  }
+
+  const removerDesconto = () => {
+    setDescontoCashback(0)
+    if (selected) onSelect(selected)
+  }
+
+  // ── Painel quando cliente selecionado ──────────────────────────────────────
+  if (selected) {
+    const saldo = parseFloat(selected.cashbackSaldo ?? '0')
+    const tier = getLoyaltyTier(selected.totalEventos)
+    const TierIcon = tier?.icon
+
+    return (
+      <div className="space-y-3">
+        {/* Card do cliente selecionado */}
+        <div className="flex items-center gap-3 bg-brand-accent/5 border border-brand-accent/20 rounded-xl p-3">
+          <div className="w-9 h-9 rounded-xl bg-brand-accent/15 flex items-center justify-center text-brand-accent font-bold text-sm shrink-0">
+            {selected.nome.slice(0, 2).toUpperCase()}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-brand-text font-semibold text-sm truncate">{selected.nome}</p>
+            <p className="text-brand-muted text-xs">{selected.telefone}
+              {selected.totalEventos > 0 && <span className="ml-2">· {selected.totalEventos} festa{selected.totalEventos !== 1 ? 's' : ''}</span>}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {tier && TierIcon && (
+              <span className={cn('flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg border', tier.bg, tier.color)}>
+                <TierIcon className="size-3" /> {tier.label}
+              </span>
+            )}
+            {!disabled && (
+              <button onClick={limpar} className="p-1 text-brand-muted hover:text-red-400 transition-colors rounded-lg hover:bg-red-500/10">
+                <X className="size-4" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Cashback */}
+        {saldo > 0 && (
+          <div className={cn('rounded-xl p-3 border', descontoCashback > 0 ? 'bg-amber-500/10 border-amber-500/30' : 'bg-emerald-500/5 border-emerald-500/20')}>
+            {descontoCashback > 0 ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Coins className="size-4 text-amber-400 shrink-0" />
+                  <div>
+                    <p className="text-amber-300 text-xs font-semibold">Desconto de cashback aplicado</p>
+                    <p className="text-amber-400 font-bold tabular-nums">- R$ {descontoCashback.toFixed(2)}</p>
+                  </div>
+                </div>
+                <button onClick={removerDesconto} className="text-brand-muted hover:text-red-400 text-xs px-2 py-1 rounded-lg hover:bg-red-500/10 transition-colors">
+                  Remover
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Coins className="size-4 text-emerald-400 shrink-0" />
+                  <div>
+                    <p className="text-emerald-300 text-xs font-medium">Cashback disponível</p>
+                    <p className="text-emerald-400 font-bold tabular-nums">R$ {saldo.toFixed(2)}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={aplicarDesconto}
+                  className="flex items-center gap-1 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  <Coins className="size-3" /> Usar como desconto
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Próximo tier */}
+        {selected.totalEventos > 0 && tier && (
+          <div className="flex items-center gap-2 px-1">
+            <div className="flex gap-1">
+              {[1,2,3,4,5,6,7,8].map(n => (
+                <div key={n} className={cn('h-1.5 w-5 rounded-full', n <= selected.totalEventos ? 'bg-brand-accent' : 'bg-brand-border')} />
+              ))}
+            </div>
+            <p className="text-brand-muted text-[10px]">{selected.totalEventos} festa{selected.totalEventos !== 1 ? 's' : ''} · {tier.label}</p>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // ── Modo cadastro rápido ───────────────────────────────────────────────────
+  if (modoNovo) {
+    return (
+      <div className="border border-brand-border rounded-xl p-4 space-y-3 bg-brand-surface-2">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-brand-text flex items-center gap-2"><UserPlus className="size-4 text-brand-accent" /> Novo cliente</p>
+          <button onClick={() => setModoNovo(false)} className="text-brand-muted hover:text-brand-text"><X className="size-4" /></button>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <input value={novoForm.nome} onChange={e => setNovoForm(f => ({ ...f, nome: e.target.value }))}
+            placeholder="Nome completo *" className={inp} />
+          <input value={novoForm.telefone} onChange={e => setNovoForm(f => ({ ...f, telefone: e.target.value }))}
+            placeholder="Telefone *" className={inp} />
+          <input value={novoForm.email} onChange={e => setNovoForm(f => ({ ...f, email: e.target.value }))}
+            type="email" placeholder="E-mail" className={inp} />
+          <input value={novoForm.cidade} onChange={e => setNovoForm(f => ({ ...f, cidade: e.target.value }))}
+            placeholder="Cidade" className={inp} />
+        </div>
+        <button onClick={criarNovo} disabled={criando}
+          className="w-full flex items-center justify-center gap-2 bg-brand-accent hover:bg-brand-accent-hover disabled:opacity-60 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors">
+          <UserPlus className="size-4" />
+          {criando ? 'Cadastrando...' : 'Cadastrar e selecionar'}
+        </button>
+      </div>
+    )
+  }
+
+  // ── Busca ─────────────────────────────────────────────────────────────────
+  return (
+    <div ref={dropRef} className="relative space-y-2">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-brand-muted pointer-events-none" />
+        <input
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          onFocus={() => query.length >= 2 && setShowDropdown(true)}
+          placeholder="Buscar cliente por nome ou telefone..."
+          className={cn(inp, 'pl-9 pr-9')}
+        />
+        {loading && <div className="absolute right-3 top-1/2 -translate-y-1/2 size-4 border-2 border-brand-accent border-t-transparent rounded-full animate-spin" />}
+      </div>
+
+      {/* Dropdown */}
+      {showDropdown && results.length > 0 && (
+        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-brand-surface border border-brand-border rounded-xl shadow-2xl overflow-hidden">
+          {results.map(c => {
+            const saldo = parseFloat(c.cashbackSaldo ?? '0')
+            const tier = getLoyaltyTier(c.totalEventos)
+            const TierIcon = tier?.icon
+            return (
+              <button
+                key={c.id}
+                onClick={() => selecionar(c)}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-brand-surface-2 transition-colors text-left border-b border-brand-border/50 last:border-0"
+              >
+                <div className="w-8 h-8 rounded-lg bg-brand-accent/10 flex items-center justify-center text-brand-accent font-bold text-xs shrink-0">
+                  {c.nome.slice(0, 2).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-brand-text text-sm font-medium truncate">{c.nome}</p>
+                  <p className="text-brand-muted text-xs">{c.telefone} · {c.totalEventos} festa{c.totalEventos !== 1 ? 's' : ''}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {saldo > 0 && (
+                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                      💰 R$ {saldo.toFixed(2)}
+                    </span>
+                  )}
+                  {tier && TierIcon && (
+                    <span className={cn('flex items-center gap-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full border', tier.bg, tier.color)}>
+                      <TierIcon className="size-2.5" /> {tier.label}
+                    </span>
+                  )}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {showDropdown && query.length >= 2 && results.length === 0 && !loading && (
+        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-brand-surface border border-brand-border rounded-xl shadow-2xl p-4 text-center">
+          <p className="text-brand-muted text-sm mb-3">Nenhum cliente encontrado para &ldquo;{query}&rdquo;</p>
+          <button onClick={() => { setModoNovo(true); setNovoForm(n => ({ ...n, nome: query })); setShowDropdown(false) }}
+            className="flex items-center justify-center gap-2 w-full bg-brand-accent/10 hover:bg-brand-accent/20 border border-brand-accent/25 text-brand-accent text-sm font-semibold py-2 rounded-xl transition-colors">
+            <UserPlus className="size-4" /> Cadastrar &ldquo;{query}&rdquo; como novo cliente
+          </button>
+        </div>
+      )}
+
+      <button
+        onClick={() => { setModoNovo(true); setShowDropdown(false) }}
+        className="flex items-center gap-2 text-brand-muted hover:text-brand-accent text-xs transition-colors"
+      >
+        <UserPlus className="size-3.5" /> Cadastrar novo cliente
+      </button>
+    </div>
+  )
+}
+
+const inp = 'w-full bg-brand-surface border border-brand-border rounded-xl px-3 py-2 text-sm text-brand-text placeholder:text-brand-muted focus:outline-none focus:border-brand-accent transition-colors'
+
 function EventoForm({ evento, onSave, onCancel }: {
   evento: Evento | null
   onSave: (e: Evento) => void
@@ -638,8 +937,29 @@ function EventoForm({ evento, onSave, onCancel }: {
   } : emptyForm)
 
   const [loading, setLoading] = useState(false)
+  const [clienteSelecionado, setClienteSelecionado] = useState<(ClienteResult & { _descontoCashback?: number }) | null>(null)
 
   const set = (k: keyof EventoFormData, v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  const handleClienteSelect = (c: (ClienteResult & { _descontoCashback?: number }) | null) => {
+    setClienteSelecionado(c)
+    if (c) {
+      setForm(f => ({
+        ...f,
+        nomeCliente: c.nome,
+        telefoneCliente: c.telefone,
+        emailCliente: c.email ?? f.emailCliente,
+      }))
+    }
+  }
+
+  // Valor total com desconto aplicado
+  const valorComDesconto = (() => {
+    const vt = parseFloat(form.valorTotal || '0')
+    const desc = clienteSelecionado?._descontoCashback ?? 0
+    if (!vt || !desc) return null
+    return Math.max(0, vt - desc)
+  })()
 
   const submit = async () => {
     if (!form.nomeCliente || !form.telefoneCliente || !form.dataEvento || !form.horarioInicio || !form.enderecoCompleto) {
@@ -648,12 +968,17 @@ function EventoForm({ evento, onSave, onCancel }: {
     }
     setLoading(true)
     try {
+      const desconto = clienteSelecionado?._descontoCashback ?? 0
+      const valorFinal = desconto && form.valorTotal
+        ? String(Math.max(0, parseFloat(form.valorTotal) - desconto))
+        : form.valorTotal
+
       const payload = {
         ...form,
-        valorTotal: form.valorTotal || null,
+        valorTotal: valorFinal || null,
         valorEntrada: form.valorEntrada || null,
-        valorRestante: form.valorTotal && form.valorEntrada
-          ? String(Number(form.valorTotal) - Number(form.valorEntrada))
+        valorRestante: valorFinal && form.valorEntrada
+          ? String(Number(valorFinal) - Number(form.valorEntrada))
           : null,
         emailCliente: form.emailCliente || null,
         horarioFim: form.horarioFim || null,
@@ -672,8 +997,22 @@ function EventoForm({ evento, onSave, onCancel }: {
         body: JSON.stringify(payload),
       })
       const saved = await res.json()
+
+      // Registrar resgate de cashback se aplicado
+      if (!evento && desconto > 0 && clienteSelecionado) {
+        await fetch(`/api/admin/clientes/${clienteSelecionado.id}/resgate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            valor: desconto,
+            eventoId: saved.id,
+            descricao: `Desconto aplicado na festa de ${form.dataEvento}`,
+          }),
+        }).catch(() => {/* non-blocking */})
+      }
+
       onSave(saved)
-      toast.success(evento ? 'Evento atualizado' : 'Evento criado')
+      toast.success(evento ? 'Evento atualizado' : 'Evento criado!')
     } catch {
       toast.error('Erro ao salvar')
     } finally {
@@ -692,12 +1031,30 @@ function EventoForm({ evento, onSave, onCancel }: {
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          <SectionTitle>Cliente</SectionTitle>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="Nome do cliente *" value={form.nomeCliente} onChange={v => set('nomeCliente', v)} placeholder="Nome completo" />
-            <Field label="Telefone *" value={form.telefoneCliente} onChange={v => set('telefoneCliente', v)} placeholder="(12) 99999-0000" />
-            <Field label="Email" value={form.emailCliente} onChange={v => set('emailCliente', v)} placeholder="email@exemplo.com" type="email" className="sm:col-span-2" />
-          </div>
+          {/* Seletor de cliente (apenas em novo evento) */}
+          {!evento ? (
+            <>
+              <SectionTitle>Cliente</SectionTitle>
+              <ClienteSelector onSelect={handleClienteSelect} />
+              {/* Campos manuais se não tiver cliente selecionado */}
+              {!clienteSelecionado && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <Field label="Nome do cliente *" value={form.nomeCliente} onChange={v => set('nomeCliente', v)} placeholder="Nome completo" />
+                  <Field label="Telefone *" value={form.telefoneCliente} onChange={v => set('telefoneCliente', v)} placeholder="(12) 99999-0000" />
+                  <Field label="Email" value={form.emailCliente} onChange={v => set('emailCliente', v)} placeholder="email@exemplo.com" type="email" className="sm:col-span-2" />
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <SectionTitle>Cliente</SectionTitle>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Field label="Nome do cliente *" value={form.nomeCliente} onChange={v => set('nomeCliente', v)} placeholder="Nome completo" />
+                <Field label="Telefone *" value={form.telefoneCliente} onChange={v => set('telefoneCliente', v)} placeholder="(12) 99999-0000" />
+                <Field label="Email" value={form.emailCliente} onChange={v => set('emailCliente', v)} placeholder="email@exemplo.com" type="email" className="sm:col-span-2" />
+              </div>
+            </>
+          )}
 
           <SectionTitle>Evento</SectionTitle>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -710,7 +1067,14 @@ function EventoForm({ evento, onSave, onCancel }: {
 
           <SectionTitle>Financeiro</SectionTitle>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="Valor total (R$)" value={form.valorTotal} onChange={v => set('valorTotal', v)} type="number" step="0.01" placeholder="0.00" />
+            <div>
+              <Field label="Valor total (R$)" value={form.valorTotal} onChange={v => set('valorTotal', v)} type="number" step="0.01" placeholder="0.00" />
+              {valorComDesconto !== null && (
+                <p className="text-xs text-amber-400 mt-1 font-semibold tabular-nums">
+                  Com desconto: R$ {valorComDesconto.toFixed(2)} <span className="text-brand-muted font-normal">(- R$ {(clienteSelecionado?._descontoCashback ?? 0).toFixed(2)} cashback)</span>
+                </p>
+              )}
+            </div>
             <Field label="Entrada paga (R$)" value={form.valorEntrada} onChange={v => set('valorEntrada', v)} type="number" step="0.01" placeholder="0.00" />
             <div>
               <label className="text-brand-muted text-xs mb-1 block">Forma de pagamento</label>
@@ -750,8 +1114,10 @@ function EventoForm({ evento, onSave, onCancel }: {
 
         <div className="p-4 border-t border-brand-border shrink-0 flex gap-3">
           <button onClick={submit} disabled={loading}
-            className="flex-1 bg-brand-accent hover:bg-brand-accent-hover disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-colors">
-            {loading ? 'Salvando...' : evento ? 'Salvar alterações' : 'Criar evento'}
+            className="flex-1 bg-brand-accent hover:bg-brand-accent-hover disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
+            {loading ? 'Salvando...' : evento ? 'Salvar alterações' : (
+              clienteSelecionado ? <><UserCheck className="size-4" /> Criar evento para {clienteSelecionado.nome.split(' ')[0]}</> : 'Criar evento'
+            )}
           </button>
           <button onClick={onCancel} className="px-4 py-3 text-brand-muted hover:text-brand-text hover:bg-brand-surface-2 rounded-xl transition-colors text-sm">
             Cancelar
