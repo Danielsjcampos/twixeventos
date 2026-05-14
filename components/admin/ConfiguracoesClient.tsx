@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import {
   Globe, Search, Zap, MessageCircle, Layout, Share2, Settings,
   Save, Check, Eye, EyeOff, ChevronRight, Layers, Bot, Map,
-  ExternalLink, RefreshCw, CheckCircle2, XCircle,
+  ExternalLink, RefreshCw, CheckCircle2, XCircle, Gift,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { saveConfigs } from '@/app/actions/configuracoes'
@@ -31,6 +31,7 @@ const TABS: Tab[] = [
   { id: 'social',      label: 'Redes Sociais', icon: Share2,         description: 'Links das redes sociais exibidos no footer' },
   { id: 'automacoes',  label: 'Automações',    icon: Bot,            description: 'WhatsApp automático: aniversários, pesquisas e avaliações' },
   { id: 'sitemap',     label: 'Sitemap / GSC', icon: Map,            description: 'Sitemap dinâmico e indexação no Google Search Console' },
+  { id: 'cashback',    label: 'Área do Cliente', icon: Gift,         description: 'Programa de cashback e configurações do portal do cliente' },
   { id: 'sistema',     label: 'Sistema',       icon: Settings,       description: 'SLA, alertas e parâmetros operacionais' },
 ]
 
@@ -687,6 +688,56 @@ export function ConfiguracoesClient({ initialConfigs }: { initialConfigs: Config
           </div>
         )
       })(),
+    },
+
+    /* ── ÁREA DO CLIENTE / CASHBACK ── */
+    cashback: {
+      keys: ['cashback_ativo','cashback_percentual','cashback_validade_dias','cashback_min_resgate','area_cliente_ativo','area_cliente_titulo'],
+      content: (
+        <div className="space-y-5">
+          <SectionTitle description="Configure o portal de autoatendimento dos seus clientes">Portal do Cliente</SectionTitle>
+          <div className="flex items-center justify-between p-4 bg-brand-surface-2 rounded-xl border border-brand-border">
+            <div>
+              <p className="text-brand-text text-sm font-medium">Área do cliente ativa</p>
+              <p className="text-brand-muted text-xs">Clientes podem acessar via código único em <code className="text-brand-accent">/minha-area</code></p>
+            </div>
+            <Toggle value={get('area_cliente_ativo') || 'true'} onChange={set('area_cliente_ativo')} label="Área ativa" />
+          </div>
+          <Field label="Título da área do cliente">
+            <Input value={get('area_cliente_titulo')} onChange={set('area_cliente_titulo')} placeholder="Minha Área" />
+          </Field>
+
+          <Divider />
+          <SectionTitle description="Os clientes ganham cashback a cada festa realizada">Programa de Cashback</SectionTitle>
+          <div className="flex items-center justify-between p-4 bg-brand-surface-2 rounded-xl border border-brand-border">
+            <div>
+              <p className="text-brand-text text-sm font-medium">Programa de cashback ativo</p>
+              <p className="text-brand-muted text-xs">Credita automaticamente quando o evento é marcado como &ldquo;realizado&rdquo;</p>
+            </div>
+            <Toggle value={get('cashback_ativo') || 'true'} onChange={set('cashback_ativo')} label="Cashback ativo" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <Field label="Percentual de cashback (%)" hint="Ex: 5 = 5% do valor total da festa">
+              <Input value={get('cashback_percentual')} onChange={set('cashback_percentual')} placeholder="5" type="number" />
+            </Field>
+            <Field label="Valor mínimo para resgate (R$)" hint="Ex: 20 = precisa de R$ 20 para resgatar">
+              <Input value={get('cashback_min_resgate')} onChange={set('cashback_min_resgate')} placeholder="20" type="number" />
+            </Field>
+            <Field label="Validade (dias)" hint="0 = sem expiração">
+              <Input value={get('cashback_validade_dias')} onChange={set('cashback_validade_dias')} placeholder="365" type="number" />
+            </Field>
+          </div>
+          <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 text-sm text-brand-muted space-y-2">
+            <p className="font-semibold text-brand-text">💡 Como funciona o cashback</p>
+            <ul className="text-xs space-y-1 list-disc list-inside">
+              <li>Quando um evento é marcado como <strong>realizado</strong>, o sistema credita automaticamente o cashback.</li>
+              <li>O cliente visualiza o saldo e o histórico na área do cliente.</li>
+              <li>Para resgatar, o cliente fala via WhatsApp e você aplica no próximo evento.</li>
+              <li>O código de acesso é gerado automaticamente e pode ser enviado via WhatsApp na tela do cliente.</li>
+            </ul>
+          </div>
+        </div>
+      ),
     },
 
     /* ── SISTEMA ── */

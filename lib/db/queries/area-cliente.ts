@@ -1,0 +1,182 @@
+import { db } from '../index'
+import { clientes, eventos, cashbackTransacoes } from '../schema'
+import { eq, desc, sql } from 'drizzle-orm'
+import { getConfig } from './configuracoes'
+
+/* ── Gera código único TWX-XXXXXXXX ─────────────────────── */
+function gerarCodigo(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // sem 0/O/I/1
+  const parte = (n: number) => Array.from({ length: n }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+  return `TWX-${parte(4)}${parte(4)}`
+}
+
+/* ── Garante código único no banco ──────────────────────── */
+export async function ensureCodigoAcesso(clienteId: string): Promise<string> {
+  const [c] = await db.select({ codigo: clientes.codigoAcesso }).from(clientes).where(eq(clientes.id, clienteId))
+  if (c?.codigo) return c.codigo
+
+  // Gerar até achar um único
+  let codigo = gerarCodigo()
+  let tentativas = 0
+  while (tentativas < 10) {
+    const [exists] = await db.select({ id: clientes.id }).from(clientes).where(eq(clientes.codigoAcesso, codigo))
+    if (!exists) break
+    codigo = gerarCodigo()
+    tentativas++
+  }
+  await db.update(clientes).set({ codigoAcesso: codigo }).where(eq(clientes.id, clienteId))
+  return codigo
+}
+
+/* ── Busca cliente pelo código ───────────────────────────── */
+export async function getClientePorCodigo(codigo: string) {
+  const codigoUpper = codigo.toUpperCase().trim()
+  const [cliente] = await db
+    .select({
+      id:             clientes.id,
+      nome:           clientes.nome,
+      telefone:       clientes.telefone,
+      email:          clientes.email,
+      codigoAcesso:   clientes.codigoAcesso,
+      cashbackSaldo:  clientes.cashbackSaldo,
+      cashbackTotal:  clientes.cashbackTotal,
+      totalEventos:   clientes.totalEventos,
+      ultimoEvento:   clientes.ultimoEvento,
+      createdAt:      clientes.createdAt,
+    })
+    .from(clientes)
+    .where(eq(clientes.codigoAcesso, codigoUpper))
+
+  return cliente ?? null
+}
+
+/* ── Reservas do cliente (via telefone → eventos) ────────── */
+export async function getReservasCliente(clienteId: string) {
+  const [cliente] = await db.select({ telefone: clientes.telefone }).from(clientes).where(eq(clientes.id, clienteId))
+  if (!cliente) return []
+
+  const rows = await db.execute(sql`
+    SELECT
+      e.id,
+      e.nome_cliente,
+      e.data_evento,
+      e.horario_inicio,
+      e.horario_fim,
+      e.endereco_completo,
+      e.valor_total,
+      e.status,
+      e.status_pagamento,
+      e.observacoes,
+      COALESCE(
+        (SELECT SUM(ct.valor) FROM cashback_transacoes ct
+         WHERE ct.evento_id = e.id AND ct.tipo = 'credito'),
+        0
+      ) AS cashback_ganho,
+      COALESCE(
+        (SELECT string_agg(b.nome, ', ')
+         FROM brinquedos b
+         WHERE b.id = ANY(e.brinquedos_contratados)),
+        ''
+      ) AS brinquedos_nomes
+    FROM eventos e
+    WHERE e.telefone_cliente = ${cliente.telefone}
+       OR e.telefone_cliente ILIKE ${cliente.telefone.replace(/\D/g, '')}
+    ORDER BY e.data_evento DESC
+    LIMIT 50
+  `)
+
+  return rows.rows as {
+    id: string
+    nome_cliente: string
+    data_evento: string
+    horario_inicio: string
+    horario_fim: string | null
+    endereco_completo: string
+    valor_total: string | null
+    status: string
+    status_pagamento: string
+    observacoes: string | null
+    cashback_ganho: number
+    brinquedos_nomes: string
+  }[]
+}
+
+/* ── Histórico de cashback ───────────────────────────────── */
+export async function getHistoricoCashback(clienteId: string) {
+  return db
+    .select({
+      id:                  cashbackTransacoes.id,
+      tipo:                cashbackTransacoes.tipo,
+      valor:               cashbackTransacoes.valor,
+      percentualAplicado:  cashbackTransacoes.percentualAplicado,
+      descricao:           cashbackTransacoes.descricao,
+      eventoId:            cashbackTransacoes.eventoId,
+      createdAt:           cashbackTransacoes.createdAt,
+    })
+    .from(cashbackTransacoes)
+    .where(eq(cashbackTransacoes.clienteId, clienteId))
+    .orderBy(desc(cashbackTransacoes.createdAt))
+    .limit(50)
+}
+
+/* ── Creditar cashback de um evento ─────────────────────── */
+export async function creditarCashbackEvento(eventoId: string, clienteTelefone: string) {
+  const [ativoConf, pctConf] = await Promise.all([
+    getConfig('cashback_ativo'),
+    getConfig('cashback_percentual'),
+  ])
+  if (ativoConf !== 'true') return null
+
+  const percentual = parseFloat(pctConf ?? '5')
+
+  // Buscar evento
+  const [evento] = await db
+    .select({ valorTotal: eventos.valorTotal, status: eventos.status })
+    .from(eventos)
+    .where(eq(eventos.id, eventoId))
+
+  if (!evento || evento.status !== 'realizado') return null
+  const valorTotal = parseFloat(String(evento.valorTotal ?? 0))
+  if (valorTotal <= 0) return null
+
+  // Buscar cliente pelo telefone
+  const telefoneDigits = clienteTelefone.replace(/\D/g, '')
+  const clienteRes = await db.execute(sql`
+    SELECT id, cashback_saldo, cashback_total FROM clientes
+    WHERE regexp_replace(telefone, '[^0-9]', '', 'g') = ${telefoneDigits}
+    LIMIT 1
+  `)
+  const clienteRow = (clienteRes.rows as unknown as { id: string; cashback_saldo: number; cashback_total: number }[])[0] ?? null
+
+  // Verificar se já foi creditado para este evento
+  const [jaCreditado] = await db
+    .select({ id: cashbackTransacoes.id })
+    .from(cashbackTransacoes)
+    .where(eq(cashbackTransacoes.eventoId, eventoId))
+
+  if (jaCreditado) return null // já processado
+
+  const valorCashback = parseFloat((valorTotal * percentual / 100).toFixed(2))
+
+  // Se tem cliente cadastrado, creditar
+  if (clienteRow) {
+    await db.insert(cashbackTransacoes).values({
+      clienteId:          clienteRow.id,
+      eventoId,
+      tipo:               'credito' as const,
+      valor:              valorCashback.toFixed(2),
+      percentualAplicado: percentual.toFixed(2),
+      descricao:          `Cashback ${percentual}% do evento de R$ ${valorTotal.toFixed(2)}`,
+    })
+
+    await db.execute(sql`
+      UPDATE clientes
+      SET cashback_saldo = cashback_saldo + ${valorCashback},
+          cashback_total = cashback_total + ${valorCashback},
+          updated_at = NOW()
+      WHERE id = ${clienteRow.id}
+    `)
+  }
+
+  return { valorCashback, percentual, clienteId: clienteRow?.id ?? null }
+}

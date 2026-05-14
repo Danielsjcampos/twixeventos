@@ -222,12 +222,17 @@ export const clientes = pgTable('clientes', {
   ativo:            boolean('ativo').default(true).notNull(),
   totalEventos:     integer('total_eventos').default(0).notNull(),
   ultimoEvento:     date('ultimo_evento'),
+  // Área do Cliente
+  codigoAcesso:     text('codigo_acesso').unique(),         // Código único ex: TWX-A3K7
+  cashbackSaldo:    decimal('cashback_saldo', { precision: 10, scale: 2 }).default('0').notNull(),
+  cashbackTotal:    decimal('cashback_total', { precision: 10, scale: 2 }).default('0').notNull(), // acumulado histórico
   createdAt:        timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt:        timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index('idx_clientes_telefone').on(t.telefone),
   index('idx_clientes_nome').on(t.nome),
   index('idx_clientes_ativo').on(t.ativo),
+  index('idx_clientes_codigo').on(t.codigoAcesso),
 ])
 
 // ============================================
@@ -315,8 +320,31 @@ export const pagamentosRelations = relations(pagamentos, ({ one }) => ({
   evento: one(eventos, { fields: [pagamentos.eventoId], references: [eventos.id] }),
 }))
 
+// ============================================
+// cashback_transacoes
+// ============================================
+export const cashbackTransacoes = pgTable('cashback_transacoes', {
+  id:                  uuid('id').primaryKey().defaultRandom(),
+  clienteId:           uuid('cliente_id').notNull().references(() => clientes.id, { onDelete: 'cascade' }),
+  eventoId:            uuid('evento_id').references(() => eventos.id, { onDelete: 'set null' }),
+  tipo:                text('tipo').notNull(), // 'credito' | 'resgate' | 'expirado'
+  valor:               decimal('valor', { precision: 10, scale: 2 }).notNull(),
+  percentualAplicado:  decimal('percentual_aplicado', { precision: 5, scale: 2 }),
+  descricao:           text('descricao'),
+  createdAt:           timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('idx_cashback_cliente').on(t.clienteId),
+  index('idx_cashback_evento').on(t.eventoId),
+])
+
 export const clientesRelations = relations(clientes, ({ many }) => ({
-  datasComecorativas: many(datasComecorativas),
+  datasComecorativas:   many(datasComecorativas),
+  cashbackTransacoes:   many(cashbackTransacoes),
+}))
+
+export const cashbackTransacoesRelations = relations(cashbackTransacoes, ({ one }) => ({
+  cliente: one(clientes, { fields: [cashbackTransacoes.clienteId], references: [clientes.id] }),
+  evento:  one(eventos,  { fields: [cashbackTransacoes.eventoId],  references: [eventos.id] }),
 }))
 
 export const datasComecorativasRelations = relations(datasComecorativas, ({ one }) => ({

@@ -25,8 +25,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: base,               lastModified: agora, changeFrequency: 'daily',   priority: 1.0  },
     { url: `${base}/brinquedos`, lastModified: agora, changeFrequency: 'daily', priority: 0.95 },
     { url: `${base}/sobre`,    lastModified: agora, changeFrequency: 'monthly', priority: 0.6  },
-    { url: `${base}/contato`,  lastModified: agora, changeFrequency: 'monthly', priority: 0.7  },
-    { url: `${base}/bio`,      lastModified: agora, changeFrequency: 'weekly',  priority: 0.65 },
+    { url: `${base}/contato`,    lastModified: agora, changeFrequency: 'monthly', priority: 0.7  },
+    { url: `${base}/bio`,        lastModified: agora, changeFrequency: 'weekly',  priority: 0.65 },
+    { url: `${base}/minha-area`, lastModified: agora, changeFrequency: 'monthly', priority: 0.5  },
   ]
 
   // ── Brinquedos (páginas individuais) ──────────────────────────

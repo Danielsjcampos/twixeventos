@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Phone, Mail, MapPin, Calendar, Gift, Plus, Trash2, Edit3, Save, X, Loader2, ExternalLink, Star, Clock } from 'lucide-react'
+import { ArrowLeft, Phone, Mail, MapPin, Calendar, Gift, Plus, Trash2, Edit3, Save, X, Loader2, ExternalLink, Star, Clock, Key, Send, Copy, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
 
@@ -17,6 +17,9 @@ type Cliente = {
   origem: string | null; tipoCliente: string | null; nomeEmpresa: string | null
   observacoes: string | null; ativo: boolean
   totalEventos: number; ultimoEvento: string | null
+  codigoAcesso?: string | null
+  cashbackSaldo?: number
+  cashbackTotal?: number
   createdAt: string
   datasComecorativas: DataComecorativa[]
 }
@@ -116,6 +119,30 @@ export function ClienteDetailClient({ cliente: initial, eventos }: Props) {
       setCliente(c => ({ ...c, datasComecorativas: c.datasComecorativas.filter(d => d.id !== id) }))
       toast.success('Data removida')
     } catch { toast.error('Erro ao remover') }
+  }
+
+  // Área do Cliente — código de acesso
+  const [codigoAcesso, setCodigoAcesso] = useState(cliente.codigoAcesso ?? null)
+  const [enviandoCodigo, setEnviandoCodigo] = useState(false)
+  const [codigoCopiado, setCodigoCopiado] = useState(false)
+
+  const handleEnviarCodigo = async () => {
+    setEnviandoCodigo(true)
+    try {
+      const res = await fetch(`/api/admin/clientes/${cliente.id}/codigo`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error()
+      setCodigoAcesso(data.codigo)
+      toast.success(data.enviado ? 'Código enviado via WhatsApp!' : `Código gerado: ${data.codigo}`)
+    } catch { toast.error('Erro ao gerar código') }
+    finally { setEnviandoCodigo(false) }
+  }
+
+  const handleCopiarCodigo = () => {
+    if (!codigoAcesso) return
+    navigator.clipboard.writeText(codigoAcesso)
+    setCodigoCopiado(true)
+    setTimeout(() => setCodigoCopiado(false), 2000)
   }
 
   const whatsappLink = `https://wa.me/55${cliente.telefone.replace(/\D/g, '')}`
@@ -282,8 +309,83 @@ export function ClienteDetailClient({ cliente: initial, eventos }: Props) {
           </div>
         </div>
 
-        {/* Datas comemorativas */}
-        <div>
+        {/* Área do Cliente */}
+        <div className="space-y-4">
+          <div className="bg-brand-surface border border-brand-border rounded-2xl p-5">
+            <h2 className="font-semibold text-brand-text text-sm flex items-center gap-2 mb-4">
+              <Key size={14} className="text-brand-accent" /> Área do Cliente
+            </h2>
+
+            {/* Cashback */}
+            {((cliente.cashbackSaldo ?? 0) > 0 || (cliente.cashbackTotal ?? 0) > 0) && (
+              <div className="mb-4 grid grid-cols-2 gap-2">
+                <div className="bg-emerald-500/8 border border-emerald-500/20 rounded-xl p-3 text-center">
+                  <p className="text-emerald-400 font-bold text-lg tabular-nums">
+                    R$ {(cliente.cashbackSaldo ?? 0).toFixed(2)}
+                  </p>
+                  <p className="text-brand-muted text-[10px] mt-0.5">Saldo</p>
+                </div>
+                <div className="bg-brand-surface-2 border border-brand-border rounded-xl p-3 text-center">
+                  <p className="text-brand-text font-bold text-lg tabular-nums">
+                    R$ {(cliente.cashbackTotal ?? 0).toFixed(2)}
+                  </p>
+                  <p className="text-brand-muted text-[10px] mt-0.5">Total acumulado</p>
+                </div>
+              </div>
+            )}
+
+            {/* Código de acesso */}
+            {codigoAcesso ? (
+              <div className="space-y-3">
+                <div>
+                  <p className="text-brand-muted text-xs mb-1.5">Código de acesso</p>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-brand-surface-2 border border-brand-border rounded-xl px-3 py-2.5 font-mono font-bold text-brand-text tracking-widest text-sm text-center">
+                      {codigoAcesso}
+                    </div>
+                    <button
+                      onClick={handleCopiarCodigo}
+                      className="w-10 h-10 rounded-xl bg-brand-surface-2 border border-brand-border text-brand-muted hover:text-brand-accent hover:border-brand-accent/30 flex items-center justify-center transition-colors"
+                    >
+                      {codigoCopiado ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                    </button>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleEnviarCodigo}
+                    disabled={enviandoCodigo}
+                    className="flex-1 flex items-center justify-center gap-1.5 bg-green-600/10 border border-green-600/20 text-green-400 hover:bg-green-600/20 text-xs font-semibold py-2 rounded-xl transition-colors disabled:opacity-50"
+                  >
+                    {enviandoCodigo ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+                    Reenviar via WhatsApp
+                  </button>
+                  <a
+                    href={`/minha-area/${codigoAcesso}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-10 h-10 rounded-xl bg-brand-surface-2 border border-brand-border text-brand-muted hover:text-brand-accent flex items-center justify-center transition-colors"
+                  >
+                    <ExternalLink size={14} />
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-brand-muted text-xs mb-3">Cliente ainda não tem código de acesso</p>
+                <button
+                  onClick={handleEnviarCodigo}
+                  disabled={enviandoCodigo}
+                  className="flex items-center justify-center gap-2 w-full bg-brand-accent hover:bg-brand-accent-hover disabled:opacity-50 text-white text-xs font-semibold py-2.5 rounded-xl transition-colors"
+                >
+                  {enviandoCodigo ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                  Gerar e enviar código
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Datas comemorativas */}
           <div className="bg-brand-surface border border-brand-border rounded-2xl p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-brand-text text-sm flex items-center gap-2">
@@ -377,6 +479,7 @@ export function ClienteDetailClient({ cliente: initial, eventos }: Props) {
             )}
           </div>
         </div>
+        {/* fim coluna direita */}
       </div>
     </div>
   )

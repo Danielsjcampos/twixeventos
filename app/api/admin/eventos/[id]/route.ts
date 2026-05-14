@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { getEventoById, updateEvento, deleteEvento } from '@/lib/db/queries/eventos'
 import { addMonitorEvento, removeMonitorEvento, updateMonitorEvento } from '@/lib/db/queries/monitores'
 import { createPagamento, updatePagamento, deletePagamento } from '@/lib/db/queries/pagamentos'
+import { creditarCashbackEvento } from '@/lib/db/queries/area-cliente'
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
@@ -49,6 +50,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   const updated = await updateEvento(id, data)
+
+  // Creditar cashback automaticamente quando evento é marcado como realizado
+  if (data.status === 'realizado' && updated?.telefoneCliente) {
+    creditarCashbackEvento(id, updated.telefoneCliente).catch(() => {/* silencia erro não-crítico */})
+  }
+
   return NextResponse.json(updated)
 }
 
