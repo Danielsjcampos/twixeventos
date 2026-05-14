@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Phone, Mail, MapPin, Calendar, Gift, Plus, Trash2, Edit3, Save, X, Loader2, ExternalLink, Star, Clock, Key, Send, Copy, Check } from 'lucide-react'
+import { ArrowLeft, Phone, Mail, MapPin, Calendar, Gift, Plus, Trash2, Edit3, Save, X, Loader2, ExternalLink, Star, Clock, Key, Send, Copy, Check, Coins, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
 
@@ -125,6 +125,38 @@ export function ClienteDetailClient({ cliente: initial, eventos }: Props) {
   const [codigoAcesso, setCodigoAcesso] = useState(cliente.codigoAcesso ?? null)
   const [enviandoCodigo, setEnviandoCodigo] = useState(false)
   const [codigoCopiado, setCodigoCopiado] = useState(false)
+
+  // Cashback — saldo e resgate
+  const [cashbackSaldo, setCashbackSaldo] = useState(cliente.cashbackSaldo ?? 0)
+  const [cashbackTotal] = useState(cliente.cashbackTotal ?? 0)
+  const [showResgate, setShowResgate] = useState(false)
+  const [resgateValor, setResgateValor] = useState('')
+  const [resgateDesc, setResgateDesc] = useState('')
+  const [resgatando, setResgatando] = useState(false)
+
+  const handleResgate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const valor = parseFloat(resgateValor.replace(',', '.'))
+    if (!valor || valor <= 0) { toast.error('Informe um valor válido'); return }
+    if (valor > cashbackSaldo) { toast.error(`Saldo insuficiente (R$ ${cashbackSaldo.toFixed(2)})`); return }
+    setResgatando(true)
+    try {
+      const res = await fetch(`/api/admin/clientes/${cliente.id}/resgate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ valor, descricao: resgateDesc || undefined }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Erro ao resgatar')
+      setCashbackSaldo(data.novoSaldo)
+      setShowResgate(false)
+      setResgateValor('')
+      setResgateDesc('')
+      toast.success(`R$ ${valor.toFixed(2)} resgatados! Novo saldo: R$ ${data.novoSaldo.toFixed(2)}`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao resgatar')
+    } finally { setResgatando(false) }
+  }
 
   const handleEnviarCodigo = async () => {
     setEnviandoCodigo(true)
@@ -316,21 +348,91 @@ export function ClienteDetailClient({ cliente: initial, eventos }: Props) {
               <Key size={14} className="text-brand-accent" /> Área do Cliente
             </h2>
 
-            {/* Cashback */}
-            {((cliente.cashbackSaldo ?? 0) > 0 || (cliente.cashbackTotal ?? 0) > 0) && (
-              <div className="mb-4 grid grid-cols-2 gap-2">
-                <div className="bg-emerald-500/8 border border-emerald-500/20 rounded-xl p-3 text-center">
-                  <p className="text-emerald-400 font-bold text-lg tabular-nums">
-                    R$ {(cliente.cashbackSaldo ?? 0).toFixed(2)}
-                  </p>
-                  <p className="text-brand-muted text-[10px] mt-0.5">Saldo</p>
+            {/* Cashback KPIs */}
+            {(cashbackSaldo > 0 || cashbackTotal > 0) && (
+              <div className="mb-4 space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-emerald-500/8 border border-emerald-500/20 rounded-xl p-3 text-center">
+                    <p className="text-emerald-400 font-bold text-lg tabular-nums">
+                      R$ {cashbackSaldo.toFixed(2)}
+                    </p>
+                    <p className="text-brand-muted text-[10px] mt-0.5">Saldo disponível</p>
+                  </div>
+                  <div className="bg-brand-surface-2 border border-brand-border rounded-xl p-3 text-center">
+                    <p className="text-brand-text font-bold text-lg tabular-nums">
+                      R$ {cashbackTotal.toFixed(2)}
+                    </p>
+                    <p className="text-brand-muted text-[10px] mt-0.5">Total acumulado</p>
+                  </div>
                 </div>
-                <div className="bg-brand-surface-2 border border-brand-border rounded-xl p-3 text-center">
-                  <p className="text-brand-text font-bold text-lg tabular-nums">
-                    R$ {(cliente.cashbackTotal ?? 0).toFixed(2)}
-                  </p>
-                  <p className="text-brand-muted text-[10px] mt-0.5">Total acumulado</p>
-                </div>
+
+                {/* Botão Resgatar */}
+                {cashbackSaldo > 0 && !showResgate && (
+                  <button
+                    onClick={() => setShowResgate(true)}
+                    className="w-full flex items-center justify-center gap-2 bg-amber-500/10 border border-amber-500/25 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/40 text-xs font-semibold py-2.5 rounded-xl transition-colors"
+                  >
+                    <Coins size={13} />
+                    Usar como desconto / pagamento
+                  </button>
+                )}
+
+                {/* Modal inline de resgate */}
+                {showResgate && (
+                  <form onSubmit={handleResgate} className="bg-amber-500/5 border border-amber-500/25 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-amber-400 flex items-center gap-1.5">
+                        <Coins size={13} /> Resgatar cashback
+                      </p>
+                      <button type="button" onClick={() => { setShowResgate(false); setResgateValor(''); setResgateDesc('') }}
+                        className="text-brand-muted hover:text-brand-text transition-colors">
+                        <X size={14} />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 bg-amber-500/8 rounded-lg px-3 py-1.5">
+                      <AlertCircle size={11} className="text-amber-400 shrink-0" />
+                      <p className="text-[10px] text-amber-300">Saldo disponível: <strong>R$ {cashbackSaldo.toFixed(2)}</strong></p>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] text-brand-muted mb-1 block">Valor a resgatar (R$)</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="number" step="0.01" min="0.01" max={cashbackSaldo}
+                          value={resgateValor}
+                          onChange={e => setResgateValor(e.target.value)}
+                          placeholder="0,00"
+                          className="flex-1 bg-brand-surface-2 border border-brand-border rounded-xl px-3 py-2 text-sm font-mono text-brand-text placeholder:text-brand-muted focus:outline-none focus:border-amber-500/50"
+                          required
+                        />
+                        <button type="button" onClick={() => setResgateValor(cashbackSaldo.toFixed(2))}
+                          className="text-[10px] font-semibold px-3 rounded-xl bg-brand-surface-2 border border-brand-border text-brand-muted hover:text-brand-text transition-colors whitespace-nowrap">
+                          Tudo
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] text-brand-muted mb-1 block">Observação (opcional)</label>
+                      <input
+                        type="text"
+                        value={resgateDesc}
+                        onChange={e => setResgateDesc(e.target.value)}
+                        placeholder="ex: desconto na festa de junho"
+                        className="w-full bg-brand-surface-2 border border-brand-border rounded-xl px-3 py-2 text-xs text-brand-text placeholder:text-brand-muted focus:outline-none focus:border-amber-500/50"
+                      />
+                    </div>
+
+                    <button
+                      type="submit" disabled={resgatando}
+                      className="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black text-xs font-bold py-2.5 rounded-xl transition-colors"
+                    >
+                      {resgatando ? <Loader2 size={13} className="animate-spin" /> : <Coins size={13} />}
+                      Confirmar resgate
+                    </button>
+                  </form>
+                )}
               </div>
             )}
 
