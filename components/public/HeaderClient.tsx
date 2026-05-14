@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Phone, Settings } from 'lucide-react';
+import { Phone, Settings, UserCircle } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn, whatsappLink, WHATSAPP_NUMBER } from '@/lib/utils';
 import { MenuToggleIcon } from '@/components/ui/menu-toggle-icon';
@@ -107,6 +107,20 @@ export function HeaderClient({ logoUrl, bannerAtivo = 'true', bannerTexto = 'Des
               <Settings className="size-4" />
             </Link>
 
+            <Link
+              href="/minha-area"
+              title="Minha Área"
+              className={cn(
+                buttonVariants({ variant: 'ghost', size: 'icon' }),
+                'relative text-brand-muted hover:text-brand-accent group'
+              )}
+            >
+              <UserCircle className="size-5" />
+              <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-brand-surface border border-brand-border px-2 py-1 text-[11px] font-medium text-brand-text shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                Minha Área
+              </span>
+            </Link>
+
             <CartButton />
 
             <a
@@ -122,6 +136,14 @@ export function HeaderClient({ logoUrl, bannerAtivo = 'true', bannerTexto = 'Des
 
           {/* Mobile Toggles */}
           <div className="flex items-center gap-2 md:hidden z-50">
+            <Link
+              href="/minha-area"
+              title="Minha Área"
+              onClick={() => setOpen(false)}
+              className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'text-brand-muted hover:text-brand-accent')}
+            >
+              <UserCircle className="size-5" />
+            </Link>
             <CartButton />
             <Button size="icon" variant="ghost" onClick={() => setOpen(!open)} className="text-brand-text hover:bg-transparent">
               <MenuToggleIcon open={open} className="size-6" duration={300} />
@@ -155,6 +177,14 @@ export function HeaderClient({ logoUrl, bannerAtivo = 'true', bannerTexto = 'Des
                   {link.label}
                 </Link>
               ))}
+              <Link
+                href="/minha-area"
+                className="flex items-center gap-3 text-2xl font-bold tracking-tight text-brand-accent py-2 border-b border-brand-border/50"
+                onClick={() => setOpen(false)}
+              >
+                <UserCircle className="size-6 shrink-0" />
+                Minha Área
+              </Link>
             </div>
             <div className="flex flex-col gap-3 pb-8">
               <Link
