@@ -126,9 +126,9 @@ export function ClienteDetailClient({ cliente: initial, eventos }: Props) {
   const [enviandoCodigo, setEnviandoCodigo] = useState(false)
   const [codigoCopiado, setCodigoCopiado] = useState(false)
 
-  // Cashback — saldo e resgate
-  const [cashbackSaldo, setCashbackSaldo] = useState(cliente.cashbackSaldo ?? 0)
-  const [cashbackTotal] = useState(cliente.cashbackTotal ?? 0)
+  // Cashback — saldo e resgate (decimal do DB chega como string)
+  const [cashbackSaldo, setCashbackSaldo] = useState(parseFloat(String(cliente.cashbackSaldo ?? '0')))
+  const [cashbackTotal] = useState(parseFloat(String(cliente.cashbackTotal ?? '0')))
   const [showResgate, setShowResgate] = useState(false)
   const [resgateValor, setResgateValor] = useState('')
   const [resgateDesc, setResgateDesc] = useState('')
