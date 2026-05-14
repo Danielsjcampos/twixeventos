@@ -2,15 +2,25 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { Users, Search, Plus, Gift, Phone, Mail, Calendar, ChevronRight, X, Loader2, Star } from 'lucide-react'
+import { Users, Search, Plus, Gift, Phone, Mail, Calendar, ChevronRight, X, Loader2, Star, Coins, Medal, Gem } from 'lucide-react'
 import { toast } from 'sonner'
-import { formatCurrency } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 
 type Cliente = {
   id: string; nome: string; telefone: string; email: string | null
   tipoCliente: string | null; origem: string | null
   totalEventos: number; ultimoEvento: string | null
   ativo: boolean; createdAt: string; cidade: string | null
+  cashbackSaldo?: string | number | null
+  cashbackTotal?: string | number | null
+}
+
+function getLoyaltyTier(totalEventos: number) {
+  if (totalEventos >= 8) return { label: 'Diamante', Icon: Gem,   color: 'text-cyan-400',   bg: 'bg-cyan-500/10',   border: 'border-cyan-500/20'   }
+  if (totalEventos >= 5) return { label: 'Ouro',     Icon: Star,  color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20' }
+  if (totalEventos >= 3) return { label: 'Prata',    Icon: Medal, color: 'text-slate-300',  bg: 'bg-slate-400/10',  border: 'border-slate-400/20'  }
+  if (totalEventos >= 1) return { label: 'Bronze',   Icon: Medal, color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' }
+  return null
 }
 
 type Aniversario = {
@@ -210,17 +220,50 @@ export function ClientesClient({ clientes: inicial, aniversarios }: Props) {
                 )}
               </div>
 
-              <div className="mt-3 pt-3 border-t border-brand-border/50 flex items-center justify-between">
-                <div className="flex items-center gap-1 text-xs text-brand-muted">
-                  <Star size={11} className="text-yellow-400" />
-                  <span>{c.totalEventos} evento{c.totalEventos !== 1 ? 's' : ''}</span>
+              <div className="mt-3 pt-3 border-t border-brand-border/50 space-y-2">
+                {/* Cashback saldo */}
+                {(() => {
+                  const saldo = parseFloat(String(c.cashbackSaldo ?? '0'))
+                  const tier = getLoyaltyTier(c.totalEventos)
+                  return (
+                    <div className="flex items-center justify-between gap-2">
+                      {/* Tier badge */}
+                      {tier ? (
+                        <span className={cn('flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border', tier.color, tier.bg, tier.border)}>
+                          <tier.Icon size={10} /> {tier.label}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-[10px] text-brand-muted/60">
+                          <Star size={10} /> {c.totalEventos} festa{c.totalEventos !== 1 ? 's' : ''}
+                        </span>
+                      )}
+
+                      {/* Cashback saldo */}
+                      {saldo > 0 ? (
+                        <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full tabular-nums">
+                          <Coins size={10} /> R$ {saldo.toFixed(2)}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-[10px] text-brand-muted/50">
+                          <Coins size={10} /> sem cashback
+                        </span>
+                      )}
+                    </div>
+                  )
+                })()}
+
+                {/* Último evento */}
+                <div className="flex items-center justify-between">
+                  {c.totalEventos > 0 && (
+                    <span className="text-[10px] text-brand-muted">{c.totalEventos} evento{c.totalEventos !== 1 ? 's' : ''}</span>
+                  )}
+                  {c.ultimoEvento && (
+                    <div className="flex items-center gap-1 text-[10px] text-brand-muted ml-auto">
+                      <Calendar size={9} />
+                      {new Date(c.ultimoEvento + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: '2-digit' })}
+                    </div>
+                  )}
                 </div>
-                {c.ultimoEvento && (
-                  <div className="flex items-center gap-1 text-xs text-brand-muted">
-                    <Calendar size={11} />
-                    {new Date(c.ultimoEvento + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: '2-digit' })}
-                  </div>
-                )}
               </div>
             </Link>
           ))}

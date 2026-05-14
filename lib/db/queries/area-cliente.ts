@@ -119,6 +119,47 @@ export async function getHistoricoCashback(clienteId: string) {
     .limit(50)
 }
 
+/* ── Histórico interno (todos os clientes) ───────────────── */
+export async function getHistoricoCashbackGlobal(opts?: { limit?: number; offset?: number }) {
+  return db.execute(sql`
+    SELECT
+      ct.id,
+      ct.tipo,
+      ct.valor,
+      ct.percentual_aplicado,
+      ct.descricao,
+      ct.evento_id,
+      ct.created_at,
+      c.id          AS cliente_id,
+      c.nome        AS cliente_nome,
+      c.telefone    AS cliente_telefone,
+      c.cashback_saldo,
+      e.data_evento,
+      e.valor_total AS evento_valor_total
+    FROM cashback_transacoes ct
+    JOIN clientes c ON c.id = ct.cliente_id
+    LEFT JOIN eventos e ON e.id = ct.evento_id
+    ORDER BY ct.created_at DESC
+    LIMIT ${opts?.limit ?? 200}
+    OFFSET ${opts?.offset ?? 0}
+  `)
+}
+
+export async function getResumosCashbackGlobal() {
+  const res = await db.execute(sql`
+    SELECT
+      COALESCE(SUM(CASE WHEN tipo = 'credito'  THEN valor::numeric ELSE 0 END), 0) AS total_creditado,
+      COALESCE(SUM(CASE WHEN tipo = 'resgate'  THEN ABS(valor::numeric) ELSE 0 END), 0) AS total_resgatado,
+      COALESCE(SUM(CASE WHEN tipo = 'expirado' THEN ABS(valor::numeric) ELSE 0 END), 0) AS total_expirado,
+      COUNT(*) FILTER (WHERE tipo = 'credito')  AS qtd_creditos,
+      COUNT(*) FILTER (WHERE tipo = 'resgate')  AS qtd_resgates,
+      (SELECT COUNT(*) FROM clientes WHERE cashback_saldo::numeric > 0) AS clientes_com_saldo,
+      (SELECT COALESCE(SUM(cashback_saldo::numeric),0) FROM clientes) AS saldo_em_circulacao
+    FROM cashback_transacoes
+  `)
+  return (res.rows as Record<string, string | number>[])[0] ?? {}
+}
+
 /* ── Creditar cashback de um evento ─────────────────────── */
 export async function creditarCashbackEvento(eventoId: string, clienteTelefone: string) {
   const [ativoConf, pctConf] = await Promise.all([
