@@ -1,8 +1,9 @@
 import { notFound } from 'next/navigation'
-import { getClientePorCodigo, getReservasCliente, getHistoricoCashback } from '@/lib/db/queries/area-cliente'
+import { getClientePorCodigo, getReservasCliente, getHistoricoCashback, getGirosDisponiveis, getHistoricoGiros } from '@/lib/db/queries/area-cliente'
 import { getConfig } from '@/lib/db/queries/configuracoes'
 import { AreaClienteDashboard } from '@/components/public/AreaClienteDashboard'
 import type { Metadata } from 'next'
+import type { Premio } from '@/components/public/Roleta'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,13 +21,26 @@ export default async function MinhaAreaCodigoPage({ params }: Props) {
   const cliente = await getClientePorCodigo(codigo.toUpperCase())
   if (!cliente) notFound()
 
-  const [reservas, historicoCashback, cashbackAtivo, cashbackPct, cashbackMin] = await Promise.all([
+  const [
+    reservas, historicoCashback, historicoGiros,
+    cashbackAtivo, cashbackPct, cashbackMin,
+    roletaAtiva, roletaMin, roletaPremiosRaw,
+    girosDisponiveis,
+  ] = await Promise.all([
     getReservasCliente(cliente.id),
     getHistoricoCashback(cliente.id),
+    getHistoricoGiros(cliente.id),
     getConfig('cashback_ativo'),
     getConfig('cashback_percentual'),
     getConfig('cashback_min_resgate'),
+    getConfig('roleta_ativa'),
+    getConfig('roleta_min_cashback'),
+    getConfig('roleta_premios'),
+    getGirosDisponiveis(cliente.id),
   ])
+
+  let roletaPremios: Premio[] = []
+  try { roletaPremios = JSON.parse(roletaPremiosRaw ?? '[]') } catch { /* empty */ }
 
   return (
     <AreaClienteDashboard
@@ -52,7 +66,17 @@ export default async function MinhaAreaCodigoPage({ params }: Props) {
         cashbackAtivo:  cashbackAtivo === 'true',
         cashbackPct:    parseFloat(cashbackPct ?? '5'),
         cashbackMin:    parseFloat(cashbackMin ?? '20'),
+        roletaAtiva:    roletaAtiva === 'true',
+        roletaMin:      parseFloat(roletaMin ?? '200'),
+        roletaPremios,
       }}
+      girosDisponiveis={girosDisponiveis}
+      historicoGiros={historicoGiros.map(g => ({
+        id:         g.id,
+        premioNome: g.premioNome,
+        premioDesc: g.premioDesc ?? '',
+        createdAt:  String(g.createdAt),
+      }))}
     />
   )
 }

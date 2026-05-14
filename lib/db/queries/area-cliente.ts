@@ -1,6 +1,6 @@
 import { db } from '../index'
-import { clientes, eventos, cashbackTransacoes } from '../schema'
-import { eq, desc, sql } from 'drizzle-orm'
+import { clientes, eventos, cashbackTransacoes, roletaGiros } from '../schema'
+import { eq, desc, count, sql } from 'drizzle-orm'
 import { getConfig } from './configuracoes'
 
 /* ── Gera código único TWX-XXXXXXXX ─────────────────────── */
@@ -158,6 +158,94 @@ export async function getResumosCashbackGlobal() {
     FROM cashback_transacoes
   `)
   return (res.rows as Record<string, string | number>[])[0] ?? {}
+}
+
+/* ── Roleta: giros disponíveis ───────────────────────────── */
+export async function getGirosDisponiveis(clienteId: string): Promise<number> {
+  const [cliente] = await db
+    .select({ cashbackTotal: clientes.cashbackTotal, girosBonus: clientes.girosBonus })
+    .from(clientes)
+    .where(eq(clientes.id, clienteId))
+  if (!cliente) return 0
+
+  const totalCashback = parseFloat(String(cliente.cashbackTotal ?? '0'))
+  const girosBonus    = Number(cliente.girosBonus ?? 0)
+
+  const minConf = await getConfig('roleta_min_cashback')
+  const min = parseFloat(minConf ?? '200')
+
+  const girosPorCashback = min > 0 && totalCashback >= min ? Math.floor(totalCashback / min) : 0
+
+  const [{ value: girosUsados }] = await db
+    .select({ value: count() })
+    .from(roletaGiros)
+    .where(eq(roletaGiros.clienteId, clienteId))
+
+  return Math.max(0, girosPorCashback + girosBonus - Number(girosUsados))
+}
+
+/* ── Admin: dar giros extras ─────────────────────────────── */
+export async function darGirosBonus(clienteId: string, quantidade: number) {
+  await db.execute(sql`
+    UPDATE clientes
+    SET giros_bonus = giros_bonus + ${quantidade},
+        updated_at  = NOW()
+    WHERE id = ${clienteId}
+  `)
+}
+
+export async function getGirosBonusCliente(clienteId: string): Promise<number> {
+  const [c] = await db
+    .select({ girosBonus: clientes.girosBonus })
+    .from(clientes)
+    .where(eq(clientes.id, clienteId))
+  return Number(c?.girosBonus ?? 0)
+}
+
+export async function getHistoricoGiros(clienteId: string) {
+  return db
+    .select()
+    .from(roletaGiros)
+    .where(eq(roletaGiros.clienteId, clienteId))
+    .orderBy(desc(roletaGiros.createdAt))
+}
+
+export async function registrarGiro(clienteId: string, premio: { id: string; nome: string; descricao: string }) {
+  const [giro] = await db.insert(roletaGiros).values({
+    clienteId,
+    premioId:   premio.id,
+    premioNome: premio.nome,
+    premioDesc: premio.descricao,
+  }).returning()
+  return giro
+}
+
+export async function creditarPremioRoleta(clienteId: string, valor: number, premioNome: string) {
+  if (valor <= 0) return null
+
+  const descricao = `Prêmio da roleta: ${premioNome}`
+  const valorStr  = valor.toFixed(2)
+
+  await db.insert(cashbackTransacoes).values({
+    clienteId,
+    eventoId:           null,
+    tipo:               'credito' as const,
+    valor:              valorStr,
+    percentualAplicado: null,
+    descricao,
+  })
+
+  // IMPORTANTE: atualiza apenas cashback_saldo (saldo disponível para usar como desconto).
+  // NÃO atualiza cashback_total — o total histórico serve para calcular giros disponíveis
+  // e só deve crescer com cashback de eventos reais, não com prêmios da roleta.
+  await db.execute(sql`
+    UPDATE clientes
+    SET cashback_saldo = cashback_saldo + ${valor},
+        updated_at     = NOW()
+    WHERE id = ${clienteId}
+  `)
+
+  return { valorCreditado: valor, descricao }
 }
 
 /* ── Creditar cashback de um evento ─────────────────────── */

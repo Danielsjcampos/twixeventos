@@ -5,6 +5,7 @@ import {
   Globe, Search, Zap, MessageCircle, Layout, Share2, Settings,
   Save, Check, Eye, EyeOff, ChevronRight, Layers, Bot, Map,
   ExternalLink, RefreshCw, CheckCircle2, XCircle, Gift,
+  Plus, Trash2, GripVertical,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { saveConfigs } from '@/app/actions/configuracoes'
@@ -162,6 +163,224 @@ function SectionTitle({ children, description }: { children: React.ReactNode; de
 
 function Divider() {
   return <hr className="border-brand-border my-6" />
+}
+
+/* ── Roleta Prize Editor ─────────────────────────────────── */
+interface Premio { id: string; nome: string; descricao: string; cor: string; peso: number; valorCredito?: number; percentual?: number; tipo?: 'fixo' | 'percentual' }
+
+const CORES_PRESET = ['#3B82F6','#10B981','#F59E0B','#8B5CF6','#EF4444','#EC4899','#F97316','#06B6D4','#84CC16','#6366F1']
+
+function PremioEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [premios, setPremios] = useState<Premio[]>(() => {
+    try { return JSON.parse(value) } catch { return [] }
+  })
+  const [editId, setEditId] = useState<string | null>(null)
+
+  const sync = (next: Premio[]) => {
+    setPremios(next)
+    onChange(JSON.stringify(next))
+  }
+
+  const addPremio = () => {
+    const novo: Premio = {
+      id: String(Date.now()),
+      nome: 'Novo Prêmio',
+      descricao: 'Descrição do prêmio',
+      cor: CORES_PRESET[premios.length % CORES_PRESET.length],
+      peso: 10,
+      tipo: 'fixo',
+      valorCredito: 0,
+      percentual: 0,
+    }
+    const next = [...premios, novo]
+    sync(next)
+    setEditId(novo.id)
+  }
+
+  const updatePremio = (id: string, field: keyof Premio, val: string | number) => {
+    sync(premios.map(p => p.id === id ? { ...p, [field]: val } : p))
+  }
+
+  const removePremio = (id: string) => {
+    sync(premios.filter(p => p.id !== id))
+    if (editId === id) setEditId(null)
+  }
+
+  const totalPeso = premios.reduce((s, p) => s + p.peso, 0)
+
+  return (
+    <div className="space-y-3">
+      {premios.length === 0 && (
+        <div className="text-center py-8 bg-brand-surface-2 rounded-xl border border-dashed border-brand-border text-brand-muted text-sm">
+          Nenhum prêmio configurado. Adicione ao menos 2 prêmios.
+        </div>
+      )}
+
+      {premios.map((p) => (
+        <div key={p.id} className="bg-brand-surface-2 border border-brand-border rounded-xl overflow-hidden">
+          {/* Header row */}
+          <div
+            className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none hover:bg-white/5 transition-colors"
+            onClick={() => setEditId(editId === p.id ? null : p.id)}
+          >
+            <GripVertical className="size-4 text-brand-muted shrink-0" />
+            <div className="w-4 h-4 rounded-full shrink-0 ring-2 ring-white/10" style={{ backgroundColor: p.cor }} />
+            <span className="font-medium text-brand-text text-sm flex-1 truncate">{p.nome || 'Sem nome'}</span>
+            <span className="text-brand-muted text-xs shrink-0">
+              Peso {p.peso} ({totalPeso > 0 ? Math.round(p.peso / totalPeso * 100) : 0}%)
+            </span>
+            <ChevronRight className={cn('size-4 text-brand-muted transition-transform', editId === p.id && 'rotate-90')} />
+            <button
+              type="button"
+              onClick={e => { e.stopPropagation(); removePremio(p.id) }}
+              className="text-red-400 hover:text-red-300 transition-colors p-1 rounded-lg hover:bg-red-400/10"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          </div>
+
+          {/* Expanded edit form */}
+          {editId === p.id && (
+            <div className="border-t border-brand-border px-4 py-4 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-medium text-brand-muted">Nome do prêmio</label>
+                  <input
+                    type="text"
+                    value={p.nome}
+                    onChange={e => updatePremio(p.id, 'nome', e.target.value)}
+                    maxLength={30}
+                    className="w-full bg-brand-surface border border-brand-border rounded-lg px-3 py-2 text-brand-text text-sm focus:outline-none focus:border-brand-accent transition-colors"
+                  />
+                  <p className="text-xs text-brand-muted text-right">{p.nome.length}/30</p>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-medium text-brand-muted">Peso (probabilidade relativa)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={p.peso}
+                    onChange={e => updatePremio(p.id, 'peso', Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-full bg-brand-surface border border-brand-border rounded-lg px-3 py-2 text-brand-text text-sm focus:outline-none focus:border-brand-accent transition-colors"
+                  />
+                  <p className="text-xs text-brand-muted">
+                    Chance: ~{totalPeso > 0 ? Math.round(p.peso / totalPeso * 100) : 0}%
+                  </p>
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="block text-xs font-medium text-brand-muted">Tipo de crédito automático</label>
+                  <div className="flex gap-2">
+                    {(['manual','fixo','percentual'] as const).map(t => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => updatePremio(p.id, 'tipo', t === 'manual' ? 'fixo' : t)}
+                        className={cn(
+                          'flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-colors',
+                          (t === 'manual' && !p.tipo || t === 'manual' && (p.valorCredito ?? 0) === 0 && (p.percentual ?? 0) === 0 && p.tipo !== 'percentual')
+                            ? 'bg-brand-accent/20 border-brand-accent/50 text-brand-accent'
+                            : t !== 'manual' && p.tipo === t
+                            ? 'bg-brand-accent/20 border-brand-accent/50 text-brand-accent'
+                            : 'border-brand-border text-brand-muted hover:border-brand-accent/30'
+                        )}
+                      >
+                        {t === 'manual' ? '📞 Manual' : t === 'fixo' ? '💰 Fixo (R$)' : '📊 % do cashback'}
+                      </button>
+                    ))}
+                  </div>
+                  {p.tipo === 'fixo' && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-brand-muted text-sm">R$</span>
+                      <input
+                        type="number" min="0" step="0.01"
+                        value={p.valorCredito ?? 0}
+                        onChange={e => updatePremio(p.id, 'valorCredito', Math.max(0, parseFloat(e.target.value) || 0))}
+                        className="flex-1 bg-brand-surface border border-brand-border rounded-lg px-3 py-2 text-brand-text text-sm focus:outline-none focus:border-brand-accent transition-colors"
+                        placeholder="0,00"
+                      />
+                      <span className="text-xs text-emerald-400 whitespace-nowrap">→ credita R$ {(p.valorCredito ?? 0).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {p.tipo === 'percentual' && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <input
+                        type="number" min="1" max="100"
+                        value={p.percentual ?? 10}
+                        onChange={e => updatePremio(p.id, 'percentual', Math.max(1, Math.min(100, parseFloat(e.target.value) || 10)))}
+                        className="w-20 bg-brand-surface border border-brand-border rounded-lg px-3 py-2 text-brand-text text-sm focus:outline-none focus:border-brand-accent transition-colors"
+                      />
+                      <span className="text-brand-muted text-sm">% do cashback total acumulado</span>
+                    </div>
+                  )}
+                  {(!p.tipo || p.tipo === 'fixo' && (p.valorCredito ?? 0) === 0) && (
+                    <p className="text-xs text-brand-muted mt-1">📞 O cliente precisará contatar via WhatsApp para resgatar.</p>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-medium text-brand-muted">Descrição (exibida no modal ao ganhar)</label>
+                <input
+                  type="text"
+                  value={p.descricao}
+                  onChange={e => updatePremio(p.id, 'descricao', e.target.value)}
+                  className="w-full bg-brand-surface border border-brand-border rounded-lg px-3 py-2 text-brand-text text-sm focus:outline-none focus:border-brand-accent transition-colors"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-medium text-brand-muted">Cor do segmento na roleta</label>
+                <div className="flex flex-wrap gap-2 items-center">
+                  {CORES_PRESET.map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => updatePremio(p.id, 'cor', c)}
+                      className={cn(
+                        'w-7 h-7 rounded-full ring-2 transition-transform hover:scale-110',
+                        p.cor === c ? 'ring-white scale-110' : 'ring-white/20'
+                      )}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                  <input
+                    type="color"
+                    value={p.cor}
+                    onChange={e => updatePremio(p.id, 'cor', e.target.value)}
+                    className="w-7 h-7 rounded-full border-0 cursor-pointer bg-transparent"
+                    title="Cor personalizada"
+                  />
+                  <span className="text-brand-muted text-xs font-mono">{p.cor}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+
+      <button
+        type="button"
+        onClick={addPremio}
+        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-accent/50 transition-colors text-sm font-medium"
+      >
+        <Plus className="size-4" />
+        Adicionar prêmio
+      </button>
+
+      {premios.length > 0 && (
+        <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-3 text-xs text-brand-muted">
+          <p className="font-semibold text-brand-text mb-1">📊 Probabilidades</p>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {premios.map(p => (
+              <span key={p.id} className="flex items-center gap-1.5 bg-brand-surface rounded-full px-2.5 py-1">
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.cor }} />
+                {p.nome}: {totalPeso > 0 ? Math.round(p.peso / totalPeso * 100) : 0}%
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 /* ═══════════════════════════════════════════
@@ -692,7 +911,7 @@ export function ConfiguracoesClient({ initialConfigs }: { initialConfigs: Config
 
     /* ── ÁREA DO CLIENTE / CASHBACK ── */
     cashback: {
-      keys: ['cashback_ativo','cashback_percentual','cashback_validade_dias','cashback_min_resgate','area_cliente_ativo','area_cliente_titulo'],
+      keys: ['cashback_ativo','cashback_percentual','cashback_validade_dias','cashback_min_resgate','area_cliente_ativo','area_cliente_titulo','roleta_ativa','roleta_min_cashback','roleta_premios'],
       content: (
         <div className="space-y-5">
           <SectionTitle description="Configure o portal de autoatendimento dos seus clientes">Portal do Cliente</SectionTitle>
@@ -734,6 +953,38 @@ export function ConfiguracoesClient({ initialConfigs }: { initialConfigs: Config
               <li>O cliente visualiza o saldo e o histórico na área do cliente.</li>
               <li>Para resgatar, o cliente fala via WhatsApp e você aplica no próximo evento.</li>
               <li>O código de acesso é gerado automaticamente e pode ser enviado via WhatsApp na tela do cliente.</li>
+            </ul>
+          </div>
+
+          <Divider />
+          <SectionTitle description="Roleta de prêmios que o cliente pode girar ao acumular cashback suficiente">🎡 Roleta de Prêmios</SectionTitle>
+          <div className="flex items-center justify-between p-4 bg-brand-surface-2 rounded-xl border border-brand-border">
+            <div>
+              <p className="text-brand-text text-sm font-medium">Roleta de prêmios ativa</p>
+              <p className="text-brand-muted text-xs">Exibe a roleta na área do cliente quando o cashback acumulado atinge o mínimo</p>
+            </div>
+            <Toggle value={get('roleta_ativa') || 'false'} onChange={set('roleta_ativa')} label="Roleta ativa" />
+          </div>
+          <Field label="Cashback mínimo para ganhar 1 giro (R$)" hint="A cada múltiplo desse valor em cashback total, o cliente ganha 1 giro. Ex: 200 = a cada R$200 acumulados">
+            <Input value={get('roleta_min_cashback')} onChange={set('roleta_min_cashback')} placeholder="200" type="number" />
+          </Field>
+
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-brand-text">Prêmios da roleta</label>
+            <p className="text-xs text-brand-muted mb-3">Configure os prêmios e seus pesos de probabilidade. Mais peso = mais chance de sair.</p>
+            <PremioEditor
+              value={get('roleta_premios') || '[]'}
+              onChange={set('roleta_premios')}
+            />
+          </div>
+
+          <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-4 text-sm text-brand-muted space-y-2">
+            <p className="font-semibold text-brand-text">🎡 Como funciona a roleta</p>
+            <ul className="text-xs space-y-1 list-disc list-inside">
+              <li>O cliente ganha 1 giro para cada R${get('roleta_min_cashback') || '200'} de cashback <strong>acumulado total</strong>.</li>
+              <li>Os giros são calculados automaticamente: <code className="text-yellow-600">floor(cashbackTotal / mínimo) − girosJáUsados</code>.</li>
+              <li>O sorteio é ponderado pelo <strong>peso</strong> de cada prêmio.</li>
+              <li>O prêmio é registrado e o cliente vê o histórico na sua área.</li>
             </ul>
           </div>
         </div>

@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { getClienteById, getEventosCliente } from '@/lib/db/queries/clientes'
+import { getGirosDisponiveis, getGirosBonusCliente } from '@/lib/db/queries/area-cliente'
 import { ClienteDetailClient } from '@/components/admin/ClienteDetailClient'
 
 export const dynamic = 'force-dynamic'
@@ -13,13 +14,15 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 }
 
 async function ClienteDetailContent({ id }: { id: string }) {
-  const [cliente, eventos] = await Promise.all([
+  const [cliente, eventos, girosDisponiveis, girosBonus] = await Promise.all([
     getClienteById(id),
     getEventosCliente(id),
+    getGirosDisponiveis(id),
+    getGirosBonusCliente(id),
   ])
   if (!cliente) notFound()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return <ClienteDetailClient cliente={cliente as any} eventos={eventos as any} />
+  return <ClienteDetailClient cliente={{ ...(cliente as any), girosDisponiveis, girosBonus }} eventos={eventos as any} />
 }
 
 export default async function ClienteDetailPage({ params }: { params: Promise<{ id: string }> }) {

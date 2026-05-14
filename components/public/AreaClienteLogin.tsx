@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Ticket, ArrowRight, Sparkles, ShieldCheck, Gift, History } from 'lucide-react'
+import { AuroraBackground } from '@/components/ui/AuroraBackground'
 
 export function AreaClienteLogin() {
   const [codigo, setCodigo] = useState('')
@@ -50,14 +51,8 @@ export function AreaClienteLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-brand-bg flex flex-col">
+    <AuroraBackground className="flex-1">
 
-      {/* Background decorativo */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-brand-accent/8 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-violet-500/6 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-brand-accent/3 rounded-full blur-3xl" />
-      </div>
 
       <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-16">
 
@@ -74,7 +69,7 @@ export function AreaClienteLogin() {
 
         {/* Card principal */}
         <div className="w-full max-w-md">
-          <div className="bg-brand-surface border border-brand-border rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+          <div className="bg-white/40 backdrop-blur-2xl border border-white/20 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
             {/* Linha luminosa no topo */}
             <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-brand-accent/60 to-transparent" />
 
@@ -162,6 +157,6 @@ export function AreaClienteLogin() {
           </div>
         </div>
       </div>
-    </div>
+    </AuroraBackground>
   )
 }

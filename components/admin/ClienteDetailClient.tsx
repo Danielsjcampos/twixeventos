@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Phone, Mail, MapPin, Calendar, Gift, Plus, Trash2, Edit3, Save, X, Loader2, ExternalLink, Star, Clock, Key, Send, Copy, Check, Coins, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Phone, Mail, MapPin, Calendar, Gift, Plus, Trash2, Edit3, Save, X, Loader2, ExternalLink, Star, Clock, Key, Send, Copy, Check, Coins, AlertCircle, Dices } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
+import { useConfetti } from '@/hooks/useConfetti'
 
 type DataComecorativa = {
   id: string; nome: string; relacao: string; dataNasc: string; anoNasc: number | null; observacoes: string | null
@@ -20,6 +21,8 @@ type Cliente = {
   codigoAcesso?: string | null
   cashbackSaldo?: number
   cashbackTotal?: number
+  girosDisponiveis?: number
+  girosBonus?: number
   createdAt: string
   datasComecorativas: DataComecorativa[]
 }
@@ -134,6 +137,14 @@ export function ClienteDetailClient({ cliente: initial, eventos }: Props) {
   const [resgateDesc, setResgateDesc] = useState('')
   const [resgatando, setResgatando] = useState(false)
 
+  // Roleta — giros extras
+  const [girosDisponiveis, setGirosDisponiveis] = useState(cliente.girosDisponiveis ?? 0)
+  const [showDarGiros, setShowDarGiros] = useState(false)
+  const [qtyGiros, setQtyGiros] = useState(1)
+  const [dandoGiros, setDandoGiros] = useState(false)
+
+  const { fire: fireConfetti } = useConfetti()
+
   const handleResgate = async (e: React.FormEvent) => {
     e.preventDefault()
     const valor = parseFloat(resgateValor.replace(',', '.'))
@@ -153,9 +164,31 @@ export function ClienteDetailClient({ cliente: initial, eventos }: Props) {
       setResgateValor('')
       setResgateDesc('')
       toast.success(`R$ ${valor.toFixed(2)} resgatados! Novo saldo: R$ ${data.novoSaldo.toFixed(2)}`)
+      fireConfetti('cashback')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao resgatar')
     } finally { setResgatando(false) }
+  }
+
+  const handleDarGiros = async () => {
+    if (qtyGiros < 1) return
+    setDandoGiros(true)
+    try {
+      const res = await fetch(`/api/admin/clientes/${cliente.id}/giros`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantidade: qtyGiros }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Erro ao dar giros')
+      setGirosDisponiveis(data.girosDisponiveis)
+      setShowDarGiros(false)
+      setQtyGiros(1)
+      toast.success(`🎡 ${qtyGiros} giro${qtyGiros > 1 ? 's' : ''} adicionado${qtyGiros > 1 ? 's' : ''} para ${cliente.nome}!`)
+      fireConfetti('sides')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao dar giros')
+    } finally { setDandoGiros(false) }
   }
 
   const handleEnviarCodigo = async () => {
@@ -435,6 +468,63 @@ export function ClienteDetailClient({ cliente: initial, eventos }: Props) {
                 )}
               </div>
             )}
+
+            {/* Roleta — giros extras */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-brand-muted text-xs font-medium flex items-center gap-1.5">
+                  <Dices size={12} className="text-yellow-400" /> Roleta de prêmios
+                </p>
+                <span className="text-yellow-400 font-bold text-sm tabular-nums">
+                  {girosDisponiveis} giro{girosDisponiveis !== 1 ? 's' : ''} disponível{girosDisponiveis !== 1 ? 'is' : ''}
+                </span>
+              </div>
+
+              {!showDarGiros ? (
+                <button
+                  onClick={() => setShowDarGiros(true)}
+                  className="w-full flex items-center justify-center gap-2 bg-yellow-400/10 border border-yellow-400/25 text-yellow-400 hover:bg-yellow-400/20 hover:border-yellow-400/40 text-xs font-semibold py-2.5 rounded-xl transition-colors"
+                >
+                  <Dices size={13} />
+                  Dar giro(s) extra na roleta
+                </button>
+              ) : (
+                <div className="bg-yellow-400/5 border border-yellow-400/25 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-yellow-400 flex items-center gap-1.5">
+                      <Dices size={13} /> Giros extras
+                    </p>
+                    <button type="button" onClick={() => setShowDarGiros(false)} className="text-brand-muted hover:text-brand-text transition-colors">
+                      <X size={14} />
+                    </button>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-brand-muted mb-1.5 block">Quantos giros dar?</label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setQtyGiros(q => Math.max(1, q - 1))}
+                        className="w-9 h-9 rounded-xl bg-brand-surface-2 border border-brand-border text-brand-text font-bold hover:border-yellow-400/40 transition-colors flex items-center justify-center text-lg"
+                      >−</button>
+                      <span className="flex-1 text-center text-2xl font-black text-yellow-400 tabular-nums">{qtyGiros}</span>
+                      <button
+                        type="button"
+                        onClick={() => setQtyGiros(q => Math.min(20, q + 1))}
+                        className="w-9 h-9 rounded-xl bg-brand-surface-2 border border-brand-border text-brand-text font-bold hover:border-yellow-400/40 transition-colors flex items-center justify-center text-lg"
+                      >+</button>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleDarGiros}
+                    disabled={dandoGiros}
+                    className="w-full flex items-center justify-center gap-2 bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 text-black text-xs font-bold py-2.5 rounded-xl transition-colors"
+                  >
+                    {dandoGiros ? <Loader2 size={13} className="animate-spin" /> : <Dices size={13} />}
+                    Confirmar — dar {qtyGiros} giro{qtyGiros > 1 ? 's' : ''}
+                  </button>
+                </div>
+              )}
+            </div>
 
             {/* Código de acesso */}
             {codigoAcesso ? (

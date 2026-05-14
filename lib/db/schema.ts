@@ -226,6 +226,7 @@ export const clientes = pgTable('clientes', {
   codigoAcesso:     text('codigo_acesso').unique(),         // Código único ex: TWX-A3K7
   cashbackSaldo:    decimal('cashback_saldo', { precision: 10, scale: 2 }).default('0').notNull(),
   cashbackTotal:    decimal('cashback_total', { precision: 10, scale: 2 }).default('0').notNull(), // acumulado histórico
+  girosBonus:       integer('giros_bonus').default(0).notNull(),   // giros extras concedidos pelo admin
   createdAt:        timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt:        timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
@@ -337,9 +338,24 @@ export const cashbackTransacoes = pgTable('cashback_transacoes', {
   index('idx_cashback_evento').on(t.eventoId),
 ])
 
+// ============================================
+// roleta_giros
+// ============================================
+export const roletaGiros = pgTable('roleta_giros', {
+  id:         uuid('id').primaryKey().defaultRandom(),
+  clienteId:  uuid('cliente_id').notNull().references(() => clientes.id, { onDelete: 'cascade' }),
+  premioNome: text('premio_nome').notNull(),
+  premioDesc: text('premio_desc'),
+  premioId:   text('premio_id'),
+  createdAt:  timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('idx_roleta_cliente').on(t.clienteId),
+])
+
 export const clientesRelations = relations(clientes, ({ many }) => ({
   datasComecorativas:   many(datasComecorativas),
   cashbackTransacoes:   many(cashbackTransacoes),
+  roletaGiros:          many(roletaGiros),
 }))
 
 export const cashbackTransacoesRelations = relations(cashbackTransacoes, ({ one }) => ({
