@@ -35,6 +35,9 @@ type FormData = z.infer<typeof schema>
 
 const CATEGORIAS_FORM = CATEGORIAS.filter((c) => c.value !== 'todos')
 
+// Shared input/select class using brand CSS variables
+const field = 'w-full rounded-xl border px-3 py-2.5 text-sm text-brand-text bg-brand-surface-2 border-brand-border placeholder:text-brand-muted/50 focus:outline-none focus:border-brand-accent focus:ring-2 focus:ring-brand-accent/15 transition-all'
+
 export function ToyForm({ brinquedo, onSuccess }: Props) {
   const isEditing = !!brinquedo
 
@@ -78,7 +81,6 @@ export function ToyForm({ brinquedo, onSuccess }: Props) {
       : '/api/admin/brinquedos'
     const method = isEditing ? 'PATCH' : 'POST'
 
-    // Limpa campos opcionais para evitar erro no banco
     const payload = {
       ...data,
       precoReferencia: data.precoReferencia?.trim() || null,
@@ -107,139 +109,97 @@ export function ToyForm({ brinquedo, onSuccess }: Props) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
-      {/* Nome + Slug */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-zinc-300">Nome *</label>
-          <input
-            {...register('nome')}
-            placeholder="Pula-Pula Profissional"
-            className="rounded-lg border px-3 py-2 text-sm text-white bg-zinc-900 border-zinc-700 focus:outline-none focus:border-orange-500"
-          />
-          {errors.nome && <p className="text-xs text-red-400">{errors.nome.message}</p>}
+
+      {/* Seção: Identificação */}
+      <Section title="Identificação">
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Nome *" error={errors.nome?.message}>
+            <input {...register('nome')} placeholder="Pula-Pula Profissional" className={field} />
+          </Field>
+          <Field label="Slug (URL)" error={errors.slug?.message} hint="Gerado automaticamente">
+            <input {...register('slug')} placeholder="pula-pula-profissional" className={`${field} opacity-70`} />
+          </Field>
+        </div>
+      </Section>
+
+      {/* Seção: Características */}
+      <Section title="Características">
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Categoria *" error={errors.categoria?.message}>
+            <select {...register('categoria')} className={field}>
+              <option value="">Selecione...</option>
+              {CATEGORIAS_FORM.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Faixa Etária *" error={errors.faixaEtaria?.message}>
+            <input {...register('faixaEtaria')} placeholder="3 a 12 anos" className={field} />
+          </Field>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-zinc-300">Slug *</label>
-          <input
-            {...register('slug')}
-            placeholder="pula-pula-profissional"
-            className="rounded-lg border px-3 py-2 text-sm text-zinc-400 bg-zinc-900/50 border-zinc-700 focus:outline-none focus:border-orange-500"
-          />
-          {errors.slug && <p className="text-xs text-red-400">{errors.slug.message}</p>}
-        </div>
-      </div>
-
-      {/* Categoria + Faixa Etária */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-zinc-300">Categoria *</label>
-          <select
-            {...register('categoria')}
-            className="rounded-lg border px-3 py-2 text-sm text-white bg-zinc-900 border-zinc-700 focus:outline-none focus:border-orange-500"
-          >
-            <option value="">Selecione...</option>
-            {CATEGORIAS_FORM.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-          {errors.categoria && <p className="text-xs text-red-400">{errors.categoria.message}</p>}
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Capacidade *" error={errors.capacidade?.message}>
+            <input {...register('capacidade')} placeholder="Até 10 crianças" className={field} />
+          </Field>
+          <Field label="Dimensões *" error={errors.dimensoes?.message}>
+            <input {...register('dimensoes')} placeholder="4m x 4m x 3m" className={field} />
+          </Field>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-zinc-300">Faixa Etária *</label>
-          <input
-            {...register('faixaEtaria')}
-            placeholder="3 a 12 anos"
-            className="rounded-lg border px-3 py-2 text-sm text-white bg-zinc-900 border-zinc-700 focus:outline-none focus:border-orange-500"
-          />
-          {errors.faixaEtaria && <p className="text-xs text-red-400">{errors.faixaEtaria.message}</p>}
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Energia">
+            <input {...register('energia')} placeholder="Tomada 110V / não necessária" className={field} />
+          </Field>
+          <Field label="Preço de Referência (R$)">
+            <input
+              {...register('precoReferencia')}
+              placeholder="350,00"
+              type="number"
+              step="0.01"
+              className={field}
+            />
+          </Field>
         </div>
-      </div>
+      </Section>
 
-      {/* Capacidade + Dimensões */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-zinc-300">Capacidade *</label>
-          <input
-            {...register('capacidade')}
-            placeholder="Até 10 crianças"
-            className="rounded-lg border px-3 py-2 text-sm text-white bg-zinc-900 border-zinc-700 focus:outline-none focus:border-orange-500"
+      {/* Seção: Descrição */}
+      <Section title="Descrição">
+        <Field label="Texto descritivo">
+          <textarea
+            {...register('descricao')}
+            rows={4}
+            placeholder="Descreva o brinquedo, suas características e diferenciais..."
+            className={`${field} resize-none`}
           />
-          {errors.capacidade && <p className="text-xs text-red-400">{errors.capacidade.message}</p>}
+        </Field>
+      </Section>
+
+      {/* Seção: Visibilidade */}
+      <Section title="Visibilidade">
+        <div className="flex gap-6">
+          <label className="flex items-center gap-2.5 cursor-pointer group">
+            <div className="relative">
+              <input {...register('ativo')} type="checkbox" className="sr-only peer" />
+              <div className="w-9 h-5 rounded-full border border-brand-border bg-brand-surface-2 peer-checked:bg-brand-accent peer-checked:border-brand-accent transition-colors" />
+              <div className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-brand-muted peer-checked:bg-white peer-checked:translate-x-4 transition-all" />
+            </div>
+            <span className="text-sm text-brand-text font-medium">Ativo no catálogo</span>
+          </label>
+
+          <label className="flex items-center gap-2.5 cursor-pointer group">
+            <div className="relative">
+              <input {...register('destaque')} type="checkbox" className="sr-only peer" />
+              <div className="w-9 h-5 rounded-full border border-brand-border bg-brand-surface-2 peer-checked:bg-amber-500 peer-checked:border-amber-500 transition-colors" />
+              <div className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-brand-muted peer-checked:bg-white peer-checked:translate-x-4 transition-all" />
+            </div>
+            <span className="text-sm text-brand-text font-medium">Em destaque</span>
+          </label>
         </div>
+      </Section>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-zinc-300">Dimensões *</label>
-          <input
-            {...register('dimensoes')}
-            placeholder="4m x 4m x 3m"
-            className="rounded-lg border px-3 py-2 text-sm text-white bg-zinc-900 border-zinc-700 focus:outline-none focus:border-orange-500"
-          />
-          {errors.dimensoes && <p className="text-xs text-red-400">{errors.dimensoes.message}</p>}
-        </div>
-      </div>
-
-      {/* Energia + Preço */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-zinc-300">Energia</label>
-          <input
-            {...register('energia')}
-            placeholder="Tomada 110V / não necessária"
-            className="rounded-lg border px-3 py-2 text-sm text-white bg-zinc-900 border-zinc-700 focus:outline-none focus:border-orange-500"
-          />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-zinc-300">Preço de Referência</label>
-          <input
-            {...register('precoReferencia')}
-            placeholder="350.00"
-            type="number"
-            step="0.01"
-            className="rounded-lg border px-3 py-2 text-sm text-white bg-zinc-900 border-zinc-700 focus:outline-none focus:border-orange-500"
-          />
-        </div>
-      </div>
-
-      {/* Descrição */}
-      <div className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium text-zinc-300">Descrição</label>
-        <textarea
-          {...register('descricao')}
-          rows={4}
-          placeholder="Descreva o brinquedo, suas características e diferenciais..."
-          className="rounded-lg border px-3 py-2 text-sm text-white bg-zinc-900 border-zinc-700 focus:outline-none focus:border-orange-500 resize-none"
-        />
-      </div>
-
-      {/* Checkboxes */}
-      <div className="flex gap-6">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            {...register('ativo')}
-            type="checkbox"
-            className="w-4 h-4 rounded accent-orange-500"
-          />
-          <span className="text-sm text-zinc-300">Ativo (visível no site)</span>
-        </label>
-
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            {...register('destaque')}
-            type="checkbox"
-            className="w-4 h-4 rounded accent-orange-500"
-          />
-          <span className="text-sm text-zinc-300">Em destaque</span>
-        </label>
-      </div>
-
-      {/* Image Upload */}
-      <div className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium text-zinc-300">Fotos</label>
+      {/* Seção: Fotos */}
+      <Section title="Fotos do produto">
         <Controller
           name="fotos"
           control={control}
@@ -254,15 +214,15 @@ export function ToyForm({ brinquedo, onSuccess }: Props) {
             />
           )}
         />
-      </div>
+      </Section>
 
       {/* Submit */}
-      <div className="flex gap-3 pt-2">
+      <div className="flex gap-3 pt-1 border-t border-brand-border">
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="flex-1 text-white font-semibold"
-          style={{ backgroundColor: '#F97316' }}
+          className="flex-1 text-white font-semibold py-2.5 rounded-xl"
+          style={{ backgroundColor: 'var(--brand-accent)' }}
         >
           {isSubmitting
             ? 'Salvando...'
@@ -272,5 +232,29 @@ export function ToyForm({ brinquedo, onSuccess }: Props) {
         </Button>
       </div>
     </form>
+  )
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <h3 className="text-xs font-semibold text-brand-muted uppercase tracking-wider border-b border-brand-border pb-2">
+        {title}
+      </h3>
+      {children}
+    </div>
+  )
+}
+
+function Field({ label, error, hint, children }: {
+  label: string; error?: string; hint?: string; children: React.ReactNode
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs font-semibold text-brand-muted">{label}</label>
+      {children}
+      {hint && !error && <p className="text-[11px] text-brand-muted/60">{hint}</p>}
+      {error && <p className="text-xs text-red-400">{error}</p>}
+    </div>
   )
 }

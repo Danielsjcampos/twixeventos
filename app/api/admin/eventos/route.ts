@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/config'
 import { getAllEventos, createEvento } from '@/lib/db/queries/eventos'
+import { syncClienteFromEvento } from '@/lib/db/queries/clientes'
 import { eventoSchema } from '@/lib/validations/toy'
 
 export async function GET() {
@@ -31,6 +32,15 @@ export async function POST(request: Request) {
       checklistMontagem: checklistPadrao,
       checklistDesmontagem: checklistPadrao.map(i => ({ ...i, id: `d${i.id}`, texto: i.texto.replace('carregados', 'descarregados') })),
     })
+
+    // Auto-registra / atualiza cliente no módulo CRM de Clientes
+    await syncClienteFromEvento({
+      nomeCliente:    data.nomeCliente,
+      telefoneCliente: data.telefoneCliente,
+      emailCliente:   data.emailCliente ?? null,
+      dataEvento:     data.dataEvento,
+    }).catch(err => console.warn('[eventos] syncClienteFromEvento falhou (não crítico):', err))
+
     return NextResponse.json(evento, { status: 201 })
   } catch (error) {
     console.error('[POST /api/admin/eventos]', error)
