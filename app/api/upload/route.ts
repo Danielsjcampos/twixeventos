@@ -1,32 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/config'
+import { handleUpload, type HandleUploadBody } from '@vercel/blob/client'
 import crypto from 'crypto'
-import sharp from 'sharp'
 
-/* ── Converte para WebP otimizado (só se não for já WebP) ── */
-async function toWebP(buffer: Buffer, mimeType: string): Promise<{ buffer: Buffer; converted: boolean }> {
-  if (mimeType === 'image/webp') {
-    // Já é WebP (cliente converteu antes de enviar) — só redimensiona se necessário
-    const img = sharp(buffer).rotate() // respeita EXIF
-    const meta = await img.metadata()
-    if ((meta.width ?? 0) > 1400) {
-      const out = await img.resize({ width: 1400, withoutEnlargement: true }).webp({ quality: 82 }).toBuffer()
-      return { buffer: out, converted: false }
-    }
-    return { buffer, converted: false }
-  }
-  // PNG / JPG / etc → converte para WebP
-  const out = await sharp(buffer).rotate().webp({ quality: 82, effort: 4 }).toBuffer()
-  return { buffer: out, converted: true }
-}
-
-/* ── helpers ── */
-function hasCloudinary() {
-  const name   = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ?? ''
-  const secret = process.env.CLOUDINARY_API_SECRET ?? ''
-  return name && !name.includes('seu-') && secret && !secret.includes('seu-')
-}
-
+/* ── Detecta storage configurado ── */
 function hasVercelBlob() {
   return !!process.env.BLOB_READ_WRITE_TOKEN
 }
@@ -35,162 +12,89 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
+  const contentType = req.headers.get('content-type') ?? ''
+
+  /* ────────────────────────────────────────────────
+   * MODO 1 — Upload direto cliente → Vercel Blob
+   * Cliente usa `upload()` de @vercel/blob/client.
+   * Esta rota só gera o token e recebe a notificação.
+   * Bypassa o limite de 4.5MB de body da serverless.
+   * ──────────────────────────────────────────────── */
+  if (contentType.includes('application/json')) {
+    if (!hasVercelBlob()) {
+      return NextResponse.json(
+        { error: 'BLOB_READ_WRITE_TOKEN não configurado no servidor.' },
+        { status: 500 },
+      )
+    }
+
+    const body = (await req.json()) as HandleUploadBody
+
+    try {
+      const jsonResponse = await handleUpload({
+        body,
+        request: req,
+        onBeforeGenerateToken: async (_pathname) => ({
+          allowedContentTypes: [
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+            'image/gif',
+            'image/svg+xml',
+          ],
+          maximumSizeInBytes: 20 * 1024 * 1024, // 20 MB
+          addRandomSuffix: true,
+          tokenPayload: JSON.stringify({}),
+        }),
+        onUploadCompleted: async ({ blob }) => {
+          console.info('[upload] Blob criado:', blob.url, blob.contentType)
+        },
+      })
+      return NextResponse.json(jsonResponse)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('[upload] handleUpload erro:', msg)
+      return NextResponse.json({ error: msg }, { status: 400 })
+    }
+  }
+
+  /* ────────────────────────────────────────────────
+   * MODO 2 — Upload via FormData (DEV / fallback)
+   * Usado quando não há Vercel Blob (desenvolvimento).
+   * Salva em public/uploads/brinquedos/
+   * ──────────────────────────────────────────────── */
   const formData = await req.formData()
   const file = formData.get('file') as File | null
   if (!file) return NextResponse.json({ error: 'Nenhum arquivo enviado' }, { status: 400 })
 
-  // Validação básica de tamanho (20 MB)
   const MAX_BYTES = 20 * 1024 * 1024
   if (file.size > MAX_BYTES) {
     return NextResponse.json({ error: 'Arquivo muito grande. Máximo: 20 MB.' }, { status: 400 })
   }
 
+  const ext = file.type === 'image/svg+xml' ? 'svg'
+            : file.type === 'image/gif'     ? 'gif'
+            : 'webp'
+  const filename = `${crypto.randomUUID()}.${ext}`
   const raw = Buffer.from(await file.arrayBuffer())
 
-  // SVG e GIF animado → sem conversão
-  const isSvg = file.type === 'image/svg+xml'
-  const isGif = file.type === 'image/gif'
-
-  let webpBuffer: Buffer
-  let finalType: string
-  let finalExt: string
-
-  if (isSvg || isGif) {
-    webpBuffer = raw
-    finalType  = file.type
-    finalExt   = isSvg ? 'svg' : 'gif'
-  } else {
-    const result = await toWebP(raw, file.type)
-    webpBuffer = result.buffer
-    finalType  = 'image/webp'
-    finalExt   = 'webp'
-  }
-
-  const filename = `${crypto.randomUUID()}.${finalExt}`
-
-  /* ── 1. Cloudinary (quando configurado) ── */
-  if (hasCloudinary()) {
-    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME!
-    const apiKey    = process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY!
-    const apiSecret = process.env.CLOUDINARY_API_SECRET!
-    const folder    = 'twix-eventos/brinquedos'
-    const timestamp = Math.round(Date.now() / 1000).toString()
-    const signature = crypto
-      .createHash('sha256')
-      .update(`folder=${folder}&timestamp=${timestamp}${apiSecret}`)
-      .digest('hex')
-
-    const cldForm = new FormData()
-    cldForm.append('file', new Blob([new Uint8Array(webpBuffer)], { type: finalType }), filename)
-    cldForm.append('signature', signature)
-    cldForm.append('timestamp', timestamp)
-    cldForm.append('api_key', apiKey)
-    cldForm.append('folder', folder)
-
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-      method: 'POST',
-      body: cldForm,
-    })
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      console.error('[upload] Cloudinary error:', err)
-      return NextResponse.json({ error: 'Falha no Cloudinary. Verifique as credenciais.' }, { status: 500 })
-    }
-    const data = await res.json()
-    return NextResponse.json({
-      url: data.secure_url as string,
-      originalSize: raw.length,
-      finalSize: webpBuffer.length,
-      storage: 'cloudinary',
-    })
-  }
-
-  /* ── 2. Vercel Blob (padrão em produção) ── */
-  if (hasVercelBlob()) {
-    const token = process.env.BLOB_READ_WRITE_TOKEN!
-    // Log do prefixo do token para diagnóstico (nunca loga o token completo)
-    console.info('[upload] Token prefix:', token.slice(0, 30) + '...')
-
-    try {
-      // Tenta primeiro via SDK @vercel/blob
-      const { put } = await import('@vercel/blob')
-      const blob = await put(`twix-eventos/${filename}`, webpBuffer, {
-        access: 'public',
-        contentType: finalType,
-        token,
-      })
-      return NextResponse.json({
-        url: blob.url,
-        originalSize: raw.length,
-        finalSize: webpBuffer.length,
-        storage: 'vercel-blob',
-      })
-    } catch (sdkErr: unknown) {
-      const sdkMsg = sdkErr instanceof Error ? sdkErr.message : String(sdkErr)
-      console.error('[upload] SDK erro:', sdkMsg)
-
-      // Fallback: upload direto via fetch (bypassa o SDK)
-      try {
-        const blobRes = await fetch(
-          `https://blob.vercel-storage.com/twix-eventos/${filename}`,
-          {
-            method: 'PUT',
-            headers: {
-              'authorization': `Bearer ${token}`,
-              'content-type': finalType,
-              'x-content-type': finalType,
-              'x-add-random-suffix': '1',
-            },
-            body: new Uint8Array(webpBuffer),
-          },
-        )
-        if (!blobRes.ok) {
-          const errText = await blobRes.text()
-          console.error('[upload] Fetch fallback erro:', blobRes.status, errText)
-          return NextResponse.json(
-            { error: `Vercel Blob (${blobRes.status}): ${errText}` },
-            { status: 500 },
-          )
-        }
-        const blobData = await blobRes.json() as { url: string }
-        return NextResponse.json({
-          url: blobData.url,
-          originalSize: raw.length,
-          finalSize: webpBuffer.length,
-          storage: 'vercel-blob-raw',
-        })
-      } catch (fetchErr: unknown) {
-        const fetchMsg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr)
-        console.error('[upload] Fetch fallback exceção:', fetchMsg)
-        return NextResponse.json(
-          { error: `Falha no upload: SDK=${sdkMsg} | Fetch=${fetchMsg}` },
-          { status: 500 },
-        )
-      }
-    }
-  }
-
-  /* ── 3. Filesystem local (dev) ── */
+  // Apenas dev — em produção, este caminho não é usado (cliente envia via JSON)
   if (process.env.NODE_ENV !== 'production') {
     const { writeFile, mkdir } = await import('fs/promises')
     const { join } = await import('path')
     const uploadsDir = join(process.cwd(), 'public', 'uploads', 'brinquedos')
     await mkdir(uploadsDir, { recursive: true })
-    await writeFile(join(uploadsDir, filename), webpBuffer)
+    await writeFile(join(uploadsDir, filename), raw)
     return NextResponse.json({
       url: `/uploads/brinquedos/${filename}`,
       originalSize: raw.length,
-      finalSize: webpBuffer.length,
+      finalSize: raw.length,
       storage: 'local',
     })
   }
 
-  /* ── Nenhum storage configurado em produção ── */
-  console.error('[upload] Nenhum storage configurado. BLOB_READ_WRITE_TOKEN ausente.')
   return NextResponse.json(
-    {
-      error: 'Storage de imagens não configurado no servidor. Configure o Vercel Blob no painel do Vercel (Storage → Connect → Blob).',
-    },
-    { status: 500 }
+    { error: 'Em produção, use upload direto via @vercel/blob/client.' },
+    { status: 500 },
   )
 }

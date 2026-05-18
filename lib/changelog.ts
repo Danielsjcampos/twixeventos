@@ -1,4 +1,4 @@
-export const CURRENT_VERSION = '1.4.0'
+export const CURRENT_VERSION = '1.5.0'
 
 export type ChangeType = 'feature' | 'fix' | 'improvement' | 'security'
 
@@ -15,6 +15,18 @@ export interface Version {
 }
 
 export const CHANGELOG: Version[] = [
+  {
+    version: '1.5.0',
+    date: '2026-05-18',
+    title: 'Upload direto para Vercel Blob (cliente → storage)',
+    changes: [
+      { type: 'fix', text: 'Upload de imagens migrado para o padrão recomendado da Vercel: navegador envia direto para o Blob via @vercel/blob/client, bypassando a função serverless' },
+      { type: 'improvement', text: 'Sem mais limite de 4.5MB do body da serverless — aceita até 20MB' },
+      { type: 'improvement', text: 'Conversão para WebP continua acontecendo no browser (Canvas API), economizando 60-80% de espaço' },
+      { type: 'improvement', text: 'Fallback automático para filesystem em desenvolvimento (sem necessidade do Vercel Blob local)' },
+      { type: 'improvement', text: 'Logs detalhados de economia de espaço e tempo de upload no console do navegador' },
+    ],
+  },
   {
     version: '1.4.0',
     date: '2026-05-18',
