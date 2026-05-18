@@ -273,9 +273,22 @@ export function TwixFooter() {
 
           {/* Barra inferior */}
           <div className="relative z-20 w-full pb-7 px-6 md:px-12 flex flex-col md:flex-row items-center justify-between gap-4">
-            {/* Copyright */}
-            <div className="text-muted-foreground text-[10px] md:text-xs font-semibold tracking-widest uppercase order-2 md:order-1">
-              © {new Date().getFullYear()} Twix Eventos. Todos os direitos reservados.
+            {/* Copyright + Dev */}
+            <div className="flex flex-col items-center md:items-start gap-1 order-2 md:order-1">
+              <div className="text-muted-foreground text-[10px] md:text-xs font-semibold tracking-widest uppercase">
+                © {new Date().getFullYear()} Twix Eventos. Todos os direitos reservados.
+              </div>
+              <div className="text-[10px] text-muted-foreground/50">
+                Desenvolvido por{' '}
+                <a
+                  href="https://2timeweb.com.br"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-muted-foreground/80 hover:text-foreground underline underline-offset-2 transition-colors"
+                >
+                  Daniel Marques · 2TimeWeb
+                </a>
+              </div>
             </div>
 
             {/* Badge "Feito com amor" */}
