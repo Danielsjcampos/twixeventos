@@ -11,6 +11,7 @@ export type Brinquedo = {
   fotos: string[] | null
   fotoDestaque: string | null
   ativo: boolean
+  status: string
   destaque: boolean
   ordemDestaque: number
   precoReferencia: string | null

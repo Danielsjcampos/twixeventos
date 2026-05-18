@@ -1,18 +1,19 @@
+import { neon } from '@neondatabase/serverless'
 import { db } from '../index'
 import { brinquedos } from '../schema'
-import { eq, and, asc, desc } from 'drizzle-orm'
+import { eq, and, asc, inArray } from 'drizzle-orm'
 
 export const getBrinquedosAtivos = () =>
-  db.select().from(brinquedos).where(eq(brinquedos.ativo, true)).orderBy(asc(brinquedos.nome))
+  db.select().from(brinquedos).where(eq(brinquedos.status, 'publicado')).orderBy(asc(brinquedos.nome))
 
 export const getBrinquedosDestaque = () =>
   db.select().from(brinquedos)
-    .where(and(eq(brinquedos.ativo, true), eq(brinquedos.destaque, true)))
+    .where(and(eq(brinquedos.status, 'publicado'), eq(brinquedos.destaque, true)))
     .orderBy(asc(brinquedos.ordemDestaque))
 
 export const getBrinquedoBySlug = async (slug: string) =>
   db.select().from(brinquedos)
-    .where(and(eq(brinquedos.slug, slug), eq(brinquedos.ativo, true)))
+    .where(and(eq(brinquedos.slug, slug), inArray(brinquedos.status, ['publicado', 'invisivel'])))
     .limit(1).then(r => r[0] ?? null)
 
 export const getBrinquedoById = async (id: string) =>
@@ -38,5 +39,27 @@ export const deleteBrinquedo = (id: string) =>
 
 export const getBrinquedosByCategoria = (categoria: string) =>
   db.select().from(brinquedos)
-    .where(and(eq(brinquedos.ativo, true), eq(brinquedos.categoria, categoria)))
+    .where(and(eq(brinquedos.status, 'publicado'), eq(brinquedos.categoria, categoria)))
     .orderBy(asc(brinquedos.nome))
+
+export const getBrinquedoHistorico = async (brinquedoId: string) => {
+  const sql = neon(process.env.DATABASE_URL!)
+  const [locacoes, topClientes] = await Promise.all([
+    sql`
+      SELECT id, nome_cliente, telefone_cliente, data_evento, valor_total, status
+      FROM eventos
+      WHERE ${brinquedoId}::uuid = ANY(brinquedos_contratados)
+      ORDER BY data_evento DESC
+      LIMIT 20
+    `,
+    sql`
+      SELECT nome_cliente, telefone_cliente, COUNT(*)::int as total
+      FROM eventos
+      WHERE ${brinquedoId}::uuid = ANY(brinquedos_contratados)
+      GROUP BY nome_cliente, telefone_cliente
+      ORDER BY total DESC
+      LIMIT 5
+    `,
+  ])
+  return { locacoes, topClientes }
+}

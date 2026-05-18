@@ -2,6 +2,8 @@ import { getBrinquedoById } from '@/lib/db/queries/brinquedos'
 import { notFound } from 'next/navigation'
 import { ToyForm } from '@/components/admin/ToyForm'
 import { BackButton } from '@/components/admin/BackButton'
+import { BrinquedoHistorico } from '@/components/admin/BrinquedoHistorico'
+import { DeleteBrinquedoButton } from '@/components/admin/DeleteBrinquedoButton'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = { title: 'Editar Brinquedo' }
@@ -19,7 +21,21 @@ export default async function EditarBrinquedoPage({ params }: { params: Promise<
           Editar: {brinquedo.nome}
         </h1>
       </div>
+
       <ToyForm brinquedo={brinquedo} />
+
+      {/* Historico de Movimentacao */}
+      <div className="mt-10">
+        <h2 className="text-xs font-semibold text-brand-muted uppercase tracking-wider mb-1">
+          Historico de Movimentacao
+        </h2>
+        <BrinquedoHistorico brinquedoId={brinquedo.id} />
+      </div>
+
+      {/* Zona de perigo */}
+      <div className="mt-10 pt-6 border-t border-red-500/20">
+        <DeleteBrinquedoButton brinquedoId={brinquedo.id} nome={brinquedo.nome} />
+      </div>
     </div>
   )
 }

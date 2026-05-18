@@ -20,6 +20,7 @@ export const brinquedos = pgTable('brinquedos', {
   fotos:           text('fotos').array().default([]),
   fotoDestaque:    text('foto_destaque'),
   ativo:           boolean('ativo').default(true).notNull(),
+  status:          text('status').notNull().default('publicado'),
   destaque:        boolean('destaque').default(false).notNull(),
   ordemDestaque:   integer('ordem_destaque').default(0).notNull(),
   precoReferencia: decimal('preco_referencia', { precision: 10, scale: 2 }),

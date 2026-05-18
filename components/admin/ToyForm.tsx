@@ -25,7 +25,7 @@ const schema = z.object({
   energia: z.string().optional(),
   descricao: z.string().optional(),
   precoReferencia: z.string().optional(),
-  ativo: z.boolean(),
+  status: z.enum(['publicado', 'rascunho', 'invisivel']),
   destaque: z.boolean(),
   fotos: z.array(z.string()),
   fotoDestaque: z.string().nullable(),
@@ -60,7 +60,7 @@ export function ToyForm({ brinquedo, onSuccess }: Props) {
       energia: brinquedo?.energia ?? '',
       descricao: brinquedo?.descricao ?? '',
       precoReferencia: brinquedo?.precoReferencia ?? '',
-      ativo: brinquedo?.ativo ?? true,
+      status: (brinquedo?.status as 'publicado' | 'rascunho' | 'invisivel') ?? 'publicado',
       destaque: brinquedo?.destaque ?? false,
       fotos: brinquedo?.fotos ?? [],
       fotoDestaque: brinquedo?.fotoDestaque ?? null,
@@ -197,17 +197,43 @@ export function ToyForm({ brinquedo, onSuccess }: Props) {
 
       {/* Seção: Visibilidade */}
       <Section title="Visibilidade">
-        <div className="flex gap-6">
-          <label className="flex items-center gap-2.5 cursor-pointer group">
-            <div className="relative">
-              <input {...register('ativo')} type="checkbox" className="sr-only peer" />
-              <div className="w-9 h-5 rounded-full border border-brand-border bg-brand-surface-2 peer-checked:bg-brand-accent peer-checked:border-brand-accent transition-colors" />
-              <div className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-brand-muted peer-checked:bg-white peer-checked:translate-x-4 transition-all" />
-            </div>
-            <span className="text-sm text-brand-text font-medium">Ativo no catálogo</span>
-          </label>
+        <div className="flex flex-col gap-4">
+          {/* Status — 3 radio buttons */}
+          <Field label="Status">
+            <Controller
+              name="status"
+              control={control}
+              render={({ field: { value, onChange } }) => (
+                <div className="flex gap-2 flex-wrap">
+                  {(
+                    [
+                      { value: 'publicado',  label: 'Publicado',  color: 'bg-green-500' },
+                      { value: 'rascunho',   label: 'Rascunho',   color: 'bg-gray-400' },
+                      { value: 'invisivel',  label: 'Invisivel',  color: 'bg-amber-500' },
+                    ] as const
+                  ).map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => onChange(opt.value)}
+                      className={[
+                        'flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold transition-all',
+                        value === opt.value
+                          ? 'border-brand-accent bg-brand-accent/10 text-brand-accent'
+                          : 'border-brand-border bg-brand-surface-2 text-brand-muted hover:border-brand-accent/50',
+                      ].join(' ')}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${opt.color}`} />
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            />
+          </Field>
 
-          <label className="flex items-center gap-2.5 cursor-pointer group">
+          {/* Destaque toggle */}
+          <label className="flex items-center gap-2.5 cursor-pointer w-fit">
             <div className="relative">
               <input {...register('destaque')} type="checkbox" className="sr-only peer" />
               <div className="w-9 h-5 rounded-full border border-brand-border bg-brand-surface-2 peer-checked:bg-amber-500 peer-checked:border-amber-500 transition-colors" />

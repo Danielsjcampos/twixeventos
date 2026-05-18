@@ -3,18 +3,19 @@ import { z } from 'zod'
 export const brinquedoSchema = z.object({
   nome:            z.string().min(2, 'Nome obrigatório'),
   slug:            z.string().min(2, 'Slug obrigatório').regex(/^[a-z0-9-]+$/, 'Slug inválido'),
-  descricao:       z.string().optional(),
+  descricao:       z.string().optional().nullable(),
   categoria:       z.string().min(1, 'Categoria obrigatória'),
   faixaEtaria:     z.string().min(1, 'Faixa etária obrigatória'),
   capacidade:      z.string().min(1, 'Capacidade obrigatória'),
   dimensoes:       z.string().min(1, 'Dimensões obrigatórias'),
-  energia:         z.string().optional(),
+  energia:         z.string().optional().nullable(),
   fotos:           z.array(z.string()).default([]),
-  fotoDestaque:    z.string().optional(),
-  ativo:           z.boolean().default(true),
+  fotoDestaque:    z.string().optional().nullable(),
+  ativo:           z.boolean().optional(),
+  status:          z.enum(['publicado', 'rascunho', 'invisivel']).default('publicado'),
   destaque:        z.boolean().default(false),
   ordemDestaque:   z.number().default(0),
-  precoReferencia: z.string().optional(),
+  precoReferencia: z.string().optional().nullable(),
 })
 
 export type BrinquedoInput = z.infer<typeof brinquedoSchema>
