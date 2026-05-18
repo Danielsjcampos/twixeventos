@@ -97,7 +97,27 @@ export function ToyForm({ brinquedo, onSuccess }: Props) {
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(body?.message ?? 'Erro ao salvar')
+        const msg = body?.message ?? 'Erro ao salvar'
+
+        // Slug duplicado: tenta com sufixo numérico
+        if (res.status === 409 && msg.includes('nome')) {
+          const suffix = `-${Date.now().toString().slice(-4)}`
+          const retryPayload = { ...payload, slug: `${payload.slug}${suffix}` }
+          const retry = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(retryPayload),
+          })
+          if (retry.ok) {
+            toast.success(isEditing ? 'Brinquedo atualizado!' : 'Brinquedo criado!')
+            onSuccess?.()
+            return
+          }
+          const retryBody = await retry.json().catch(() => ({}))
+          throw new Error(retryBody?.message ?? msg)
+        }
+
+        throw new Error(msg)
       }
 
       toast.success(isEditing ? 'Brinquedo atualizado!' : 'Brinquedo criado!')
