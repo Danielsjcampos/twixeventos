@@ -107,17 +107,30 @@ export async function POST(req: NextRequest) {
 
   /* ── 2. Vercel Blob (padrão em produção) ── */
   if (hasVercelBlob()) {
-    const { put } = await import('@vercel/blob')
-    const blob = await put(`twix-eventos/${filename}`, webpBuffer, {
-      access: 'public',
-      contentType: finalType,
-    })
-    return NextResponse.json({
-      url: blob.url,
-      originalSize: raw.length,
-      finalSize: webpBuffer.length,
-      storage: 'vercel-blob',
-    })
+    try {
+      const { put } = await import('@vercel/blob')
+      const blob = await put(`twix-eventos/${filename}`, webpBuffer, {
+        access: 'public',
+        contentType: finalType,
+        token: process.env.BLOB_READ_WRITE_TOKEN,
+        addRandomSuffix: false,
+      })
+      return NextResponse.json({
+        url: blob.url,
+        originalSize: raw.length,
+        finalSize: webpBuffer.length,
+        storage: 'vercel-blob',
+      })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      const stack = err instanceof Error ? err.stack : ''
+      console.error('[upload] Vercel Blob ERRO COMPLETO:', msg)
+      console.error('[upload] Stack:', stack)
+      return NextResponse.json(
+        { error: `Falha no Vercel Blob: ${msg}` },
+        { status: 500 },
+      )
+    }
   }
 
   /* ── 3. Filesystem local (dev) ── */
