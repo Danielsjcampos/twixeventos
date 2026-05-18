@@ -107,13 +107,17 @@ export async function POST(req: NextRequest) {
 
   /* ── 2. Vercel Blob (padrão em produção) ── */
   if (hasVercelBlob()) {
+    const token = process.env.BLOB_READ_WRITE_TOKEN!
+    // Log do prefixo do token para diagnóstico (nunca loga o token completo)
+    console.info('[upload] Token prefix:', token.slice(0, 30) + '...')
+
     try {
+      // Tenta primeiro via SDK @vercel/blob
       const { put } = await import('@vercel/blob')
       const blob = await put(`twix-eventos/${filename}`, webpBuffer, {
         access: 'public',
         contentType: finalType,
-        token: process.env.BLOB_READ_WRITE_TOKEN,
-        addRandomSuffix: false,
+        token,
       })
       return NextResponse.json({
         url: blob.url,
@@ -121,15 +125,48 @@ export async function POST(req: NextRequest) {
         finalSize: webpBuffer.length,
         storage: 'vercel-blob',
       })
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err)
-      const stack = err instanceof Error ? err.stack : ''
-      console.error('[upload] Vercel Blob ERRO COMPLETO:', msg)
-      console.error('[upload] Stack:', stack)
-      return NextResponse.json(
-        { error: `Falha no Vercel Blob: ${msg}` },
-        { status: 500 },
-      )
+    } catch (sdkErr: unknown) {
+      const sdkMsg = sdkErr instanceof Error ? sdkErr.message : String(sdkErr)
+      console.error('[upload] SDK erro:', sdkMsg)
+
+      // Fallback: upload direto via fetch (bypassa o SDK)
+      try {
+        const blobRes = await fetch(
+          `https://blob.vercel-storage.com/twix-eventos/${filename}`,
+          {
+            method: 'PUT',
+            headers: {
+              'authorization': `Bearer ${token}`,
+              'content-type': finalType,
+              'x-content-type': finalType,
+              'x-add-random-suffix': '1',
+            },
+            body: webpBuffer,
+          },
+        )
+        if (!blobRes.ok) {
+          const errText = await blobRes.text()
+          console.error('[upload] Fetch fallback erro:', blobRes.status, errText)
+          return NextResponse.json(
+            { error: `Vercel Blob (${blobRes.status}): ${errText}` },
+            { status: 500 },
+          )
+        }
+        const blobData = await blobRes.json() as { url: string }
+        return NextResponse.json({
+          url: blobData.url,
+          originalSize: raw.length,
+          finalSize: webpBuffer.length,
+          storage: 'vercel-blob-raw',
+        })
+      } catch (fetchErr: unknown) {
+        const fetchMsg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr)
+        console.error('[upload] Fetch fallback exceção:', fetchMsg)
+        return NextResponse.json(
+          { error: `Falha no upload: SDK=${sdkMsg} | Fetch=${fetchMsg}` },
+          { status: 500 },
+        )
+      }
     }
   }
 
