@@ -1,4 +1,4 @@
-export const CURRENT_VERSION = '1.3.0'
+export const CURRENT_VERSION = '1.4.0'
 
 export type ChangeType = 'feature' | 'fix' | 'improvement' | 'security'
 
@@ -15,6 +15,17 @@ export interface Version {
 }
 
 export const CHANGELOG: Version[] = [
+  {
+    version: '1.4.0',
+    date: '2026-05-18',
+    title: 'Correção crítica de upload de imagens em produção',
+    changes: [
+      { type: 'fix', text: 'Adicionado `serverExternalPackages: [\'sharp\']` no next.config.ts — corrige erro 500 ao fazer upload no Vercel (sharp é binário nativo e não pode ser bundled)' },
+      { type: 'fix', text: 'Hostname `*.public.blob.vercel-storage.com` adicionado aos remotePatterns do Next.js Image para exibir fotos salvas no Vercel Blob' },
+      { type: 'feature', text: 'Histórico de versões adicionado ao painel admin com timeline completa' },
+      { type: 'feature', text: 'Badge de versão atual visível na sidebar do admin com link para o changelog' },
+    ],
+  },
   {
     version: '1.3.0',
     date: '2026-05-18',
