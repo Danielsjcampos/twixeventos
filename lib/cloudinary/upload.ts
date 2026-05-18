@@ -1,4 +1,16 @@
-/** Convert any image to WebP in the browser via Canvas before upload */
+/**
+ * Pipeline de imagens 100% client-side, sem cloud storage.
+ *
+ * 1. toWebP(file)      → converte/redimensiona via Canvas, retorna um novo File
+ * 2. uploadImage(file) → lê o File e retorna a string base64 data URL
+ *
+ * O "URL" retornado é uma data URL (data:image/webp;base64,…) que vai direto
+ * pro banco PostgreSQL (colunas `fotos text[]` e `foto_destaque text`).
+ *
+ * Sem dependência de Vercel Blob / Cloudinary / S3.
+ */
+
+/** Converte qualquer imagem para WebP no browser via Canvas API */
 export async function toWebP(file: File, maxWidth = 1400, quality = 0.85): Promise<File> {
   return new Promise((resolve, reject) => {
     const img = new Image()
@@ -12,72 +24,40 @@ export async function toWebP(file: File, maxWidth = 1400, quality = 0.85): Promi
       canvas.width = w
       canvas.height = h
       const ctx = canvas.getContext('2d')
-      if (!ctx) { reject(new Error('Canvas not available')); return }
+      if (!ctx) { reject(new Error('Canvas indisponível')); return }
       ctx.drawImage(img, 0, 0, w, h)
       canvas.toBlob(
         blob => {
-          if (!blob) { reject(new Error('WebP conversion failed')); return }
+          if (!blob) { reject(new Error('Falha ao converter para WebP')); return }
           resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' }))
         },
         'image/webp',
-        quality
+        quality,
       )
     }
-    img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Image load failed')) }
+    img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Falha ao carregar imagem')) }
     img.src = objectUrl
   })
 }
 
+/** Lê um File e retorna uma string data URL base64 (data:image/webp;base64,…) */
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(new Error('Falha ao ler arquivo'))
+    reader.readAsDataURL(file)
+  })
+}
+
 /**
- * Upload image:
- * - PRODUCTION: direct browser → Vercel Blob via @vercel/blob/client (bypasses 4.5MB serverless limit)
- * - DEV fallback: POSTs FormData to /api/upload (filesystem storage)
+ * "Sobe" a imagem — na verdade só converte para base64 data URL.
+ * A string retornada vai direto pra coluna do banco (TEXT/text[]).
  */
 export async function uploadImage(file: File): Promise<string> {
-  // 1) Converte para WebP no browser (mantém SVG/GIF intactos)
-  let finalFile = file
-  if (file.type !== 'image/svg+xml' && file.type !== 'image/gif') {
-    try {
-      finalFile = await toWebP(file)
-    } catch (err) {
-      console.warn('[upload] WebP falhou, enviando original:', err)
-    }
-  }
-
+  const dataUrl = await fileToDataUrl(file)
   const originalKB = Math.round(file.size / 1024)
-  const finalKB    = Math.round(finalFile.size / 1024)
-  const saving     = Math.max(0, Math.round((1 - finalFile.size / file.size) * 100))
-
-  // 2) Tenta upload direto cliente → Vercel Blob (produção)
-  try {
-    const { upload } = await import('@vercel/blob/client')
-    const ext = finalFile.type === 'image/svg+xml' ? 'svg'
-             : finalFile.type === 'image/gif'     ? 'gif'
-             : 'webp'
-    const pathname = `twix-eventos/brinquedos/${crypto.randomUUID()}.${ext}`
-
-    const blob = await upload(pathname, finalFile, {
-      access: 'public',
-      handleUploadUrl: '/api/upload',
-      contentType: finalFile.type,
-    })
-
-    console.info(`[upload] ✅ Vercel Blob: ${originalKB}KB → ${finalKB}KB (−${saving}%) | ${blob.url}`)
-    return blob.url
-  } catch (clientErr) {
-    console.warn('[upload] Vercel Blob (cliente) falhou — tentando fallback FormData:', clientErr)
-  }
-
-  // 3) Fallback: FormData → /api/upload (dev / filesystem)
-  const fd = new FormData()
-  fd.append('file', finalFile)
-  const res = await fetch('/api/upload', { method: 'POST', body: fd })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    const msg = (err as { error?: string }).error ?? 'Falha no upload'
-    throw new Error(msg)
-  }
-  const data = await res.json() as { url: string; storage?: string }
-  console.info(`[upload] ✅ ${data.storage}: ${originalKB}KB → ${finalKB}KB (−${saving}%)`)
-  return data.url
+  const base64KB   = Math.round((dataUrl.length * 0.75) / 1024) // base64 ≈ 4/3 do binário
+  console.info(`[upload] ✅ WebP base64 inline: original=${originalKB}KB · base64=${base64KB}KB`)
+  return dataUrl
 }

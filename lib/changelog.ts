@@ -1,4 +1,4 @@
-export const CURRENT_VERSION = '1.5.0'
+export const CURRENT_VERSION = '1.6.0'
 
 export type ChangeType = 'feature' | 'fix' | 'improvement' | 'security'
 
@@ -15,6 +15,18 @@ export interface Version {
 }
 
 export const CHANGELOG: Version[] = [
+  {
+    version: '1.6.0',
+    date: '2026-05-18',
+    title: 'Imagens 100% no banco — adeus Vercel Blob, CORS e SDK quebrado',
+    changes: [
+      { type: 'fix', text: 'Upload de fotos agora é 100% client-side: converte para WebP via Canvas API e salva como base64 data URL direto no PostgreSQL' },
+      { type: 'fix', text: 'Resolve definitivamente o erro CORS / 400 do Vercel Blob em produção' },
+      { type: 'improvement', text: 'Removida toda a infraestrutura de upload externo (Vercel Blob, sharp em runtime, /api/upload)' },
+      { type: 'improvement', text: 'Funciona idêntico em localhost e em produção — sem variáveis de ambiente, sem tokens, sem buckets' },
+      { type: 'improvement', text: 'WebP no browser continua reduzindo o tamanho da imagem em 60–80% antes de salvar' },
+    ],
+  },
   {
     version: '1.5.0',
     date: '2026-05-18',
