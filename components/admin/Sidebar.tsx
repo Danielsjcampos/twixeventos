@@ -5,9 +5,10 @@ import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import {
   LayoutDashboard, Users, Package, Calendar,
-  Settings, LogOut, UserCheck, DollarSign, UserCog, Contact, Coins,
+  Settings, LogOut, UserCheck, DollarSign, UserCog, Contact, Coins, History,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { CURRENT_VERSION } from '@/lib/changelog'
 
 const NAV_ITEMS = [
   { href: '/admin',               label: 'Dashboard',        icon: LayoutDashboard, exact: true },
@@ -73,8 +74,25 @@ export function Sidebar() {
           })}
         </nav>
 
-        {/* Sign out */}
-        <div className="p-3 border-t border-brand-border">
+        {/* Versão + Sign out */}
+        <div className="p-3 border-t border-brand-border flex flex-col gap-1">
+          <Link
+            href="/admin/changelog"
+            className={cn(
+              'flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150',
+              pathname === '/admin/changelog'
+                ? 'bg-brand-accent/10 text-brand-accent'
+                : 'text-brand-muted hover:text-brand-text hover:bg-brand-surface-2',
+            )}
+          >
+            <span className="flex items-center gap-2">
+              <History size={14} />
+              Versões
+            </span>
+            <span className="font-mono font-bold text-[10px] px-1.5 py-0.5 rounded-md bg-brand-surface-2 border border-brand-border">
+              v{CURRENT_VERSION}
+            </span>
+          </Link>
           <button
             onClick={() => signOut({ callbackUrl: '/auth/login' })}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-brand-muted hover:text-brand-text hover:bg-brand-surface-2 transition-all duration-150"
