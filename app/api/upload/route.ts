@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
               'x-content-type': finalType,
               'x-add-random-suffix': '1',
             },
-            body: webpBuffer,
+            body: new Uint8Array(webpBuffer),
           },
         )
         if (!blobRes.ok) {
