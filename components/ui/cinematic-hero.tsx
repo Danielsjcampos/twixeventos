@@ -439,7 +439,7 @@ export function CinematicHero({
                 </div>
 
                 {/* Floating Glass Badges */}
-                <div className="floating-badge absolute flex top-6 lg:top-12 left-[-15px] lg:left-[-80px] floating-ui-badge rounded-xl lg:rounded-2xl p-3 lg:p-4 items-center gap-3 lg:gap-4 z-30">
+                <div className="floating-badge absolute flex top-6 lg:top-12 left-0 lg:left-[-80px] floating-ui-badge rounded-xl lg:rounded-2xl p-3 lg:p-4 items-center gap-3 lg:gap-4 z-30">
                   <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-gradient-to-b from-amber-500/20 to-amber-900/10 flex items-center justify-center border border-amber-400/30 shadow-inner">
                     <Star className="w-4 h-4 lg:w-5 lg:h-5 text-amber-400 fill-amber-400 drop-shadow-lg" />
                   </div>
@@ -449,7 +449,7 @@ export function CinematicHero({
                   </div>
                 </div>
 
-                <div className="floating-badge absolute flex bottom-12 lg:bottom-20 right-[-15px] lg:right-[-80px] floating-ui-badge rounded-xl lg:rounded-2xl p-3 lg:p-4 items-center gap-3 lg:gap-4 z-30">
+                <div className="floating-badge absolute flex bottom-12 lg:bottom-20 right-0 lg:right-[-80px] floating-ui-badge rounded-xl lg:rounded-2xl p-3 lg:p-4 items-center gap-3 lg:gap-4 z-30">
                   <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-gradient-to-b from-emerald-500/20 to-emerald-900/10 flex items-center justify-center border border-emerald-400/30 shadow-inner">
                     <Heart className="w-4 h-4 lg:w-5 lg:h-5 text-emerald-400 fill-emerald-400 drop-shadow-lg" />
                   </div>

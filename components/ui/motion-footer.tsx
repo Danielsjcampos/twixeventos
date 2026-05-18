@@ -213,9 +213,11 @@ export function TwixFooter() {
           </div>
 
           {/* Marquee diagonal */}
-          <div className="absolute top-10 left-0 w-full overflow-hidden border-y border-border/30 bg-background/70 backdrop-blur-md py-3.5 z-10 -rotate-[1.5deg] scale-110 shadow-xl text-muted-foreground">
-            <div className="flex w-max twix-footer-marquee">
-              <MarqueeItem /><MarqueeItem />
+          <div className="absolute top-10 left-0 w-full overflow-hidden z-10 -rotate-[1.5deg] shadow-xl">
+            <div className="w-[110%] -ml-[5%] border-y border-border/30 bg-background/70 backdrop-blur-md py-3.5 overflow-hidden text-muted-foreground">
+              <div className="flex w-max twix-footer-marquee">
+                <MarqueeItem /><MarqueeItem />
+              </div>
             </div>
           </div>
 
