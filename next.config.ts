@@ -1,8 +1,10 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  // sharp usa binários nativos — não pode ser bundled pelo webpack no Vercel
-  serverExternalPackages: ['sharp'],
+  // Gera .next/standalone para deploy Docker (sem node_modules completo)
+  output: 'standalone',
+  // sharp e postgres usam binários nativos — não podem ser bundled
+  serverExternalPackages: ['sharp', 'postgres'],
 
   images: {
     remotePatterns: [
@@ -13,11 +15,6 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'twixeventos.com',
-      },
-      // Vercel Blob Storage
-      {
-        protocol: 'https',
-        hostname: '*.public.blob.vercel-storage.com',
       },
     ],
   },

@@ -12,21 +12,7 @@ async function Content() {
     getResumosCashbackGlobal(),
   ])
 
-  const transacoes = (rawTxs.rows as {
-    id: string
-    tipo: string
-    valor: string
-    percentual_aplicado: string | null
-    descricao: string | null
-    evento_id: string | null
-    created_at: string
-    cliente_id: string
-    cliente_nome: string
-    cliente_telefone: string
-    cashback_saldo: string
-    data_evento: string | null
-    evento_valor_total: string | null
-  }[]).map(r => ({
+  const transacoes = rawTxs.map(r => ({
     id:              r.id,
     tipo:            r.tipo,
     valor:           parseFloat(r.valor ?? '0'),

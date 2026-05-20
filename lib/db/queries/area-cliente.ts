@@ -1,6 +1,6 @@
-import { db } from '../index'
+import { db, rawSql } from '../index'
 import { clientes, eventos, cashbackTransacoes, roletaGiros } from '../schema'
-import { eq, desc, count, sql } from 'drizzle-orm'
+import { eq, desc, count } from 'drizzle-orm'
 import { getConfig } from './configuracoes'
 
 /* ── Gera código único TWX-XXXXXXXX ─────────────────────── */
@@ -55,50 +55,29 @@ export async function getReservasCliente(clienteId: string) {
   const [cliente] = await db.select({ telefone: clientes.telefone }).from(clientes).where(eq(clientes.id, clienteId))
   if (!cliente) return []
 
-  const rows = await db.execute(sql`
+  return rawSql<Array<{
+    id: string; nome_cliente: string; data_evento: string; horario_inicio: string
+    horario_fim: string | null; endereco_completo: string; valor_total: string | null
+    status: string; status_pagamento: string; observacoes: string | null
+    cashback_ganho: number; brinquedos_nomes: string
+  }>>`
     SELECT
-      e.id,
-      e.nome_cliente,
-      e.data_evento,
-      e.horario_inicio,
-      e.horario_fim,
-      e.endereco_completo,
-      e.valor_total,
-      e.status,
-      e.status_pagamento,
-      e.observacoes,
+      e.id, e.nome_cliente, e.data_evento, e.horario_inicio, e.horario_fim,
+      e.endereco_completo, e.valor_total, e.status, e.status_pagamento, e.observacoes,
       COALESCE(
         (SELECT SUM(ct.valor) FROM cashback_transacoes ct
-         WHERE ct.evento_id = e.id AND ct.tipo = 'credito'),
-        0
+         WHERE ct.evento_id = e.id AND ct.tipo = 'credito'), 0
       ) AS cashback_ganho,
       COALESCE(
-        (SELECT string_agg(b.nome, ', ')
-         FROM brinquedos b
-         WHERE b.id = ANY(e.brinquedos_contratados)),
-        ''
+        (SELECT string_agg(b.nome, ', ') FROM brinquedos b
+         WHERE b.id = ANY(e.brinquedos_contratados)), ''
       ) AS brinquedos_nomes
     FROM eventos e
     WHERE e.telefone_cliente = ${cliente.telefone}
        OR e.telefone_cliente ILIKE ${cliente.telefone.replace(/\D/g, '')}
     ORDER BY e.data_evento DESC
     LIMIT 50
-  `)
-
-  return rows.rows as {
-    id: string
-    nome_cliente: string
-    data_evento: string
-    horario_inicio: string
-    horario_fim: string | null
-    endereco_completo: string
-    valor_total: string | null
-    status: string
-    status_pagamento: string
-    observacoes: string | null
-    cashback_ganho: number
-    brinquedos_nomes: string
-  }[]
+  `
 }
 
 /* ── Histórico de cashback ───────────────────────────────── */
@@ -121,32 +100,28 @@ export async function getHistoricoCashback(clienteId: string) {
 
 /* ── Histórico interno (todos os clientes) ───────────────── */
 export async function getHistoricoCashbackGlobal(opts?: { limit?: number; offset?: number }) {
-  return db.execute(sql`
-    SELECT
-      ct.id,
-      ct.tipo,
-      ct.valor,
-      ct.percentual_aplicado,
-      ct.descricao,
-      ct.evento_id,
-      ct.created_at,
-      c.id          AS cliente_id,
-      c.nome        AS cliente_nome,
-      c.telefone    AS cliente_telefone,
-      c.cashback_saldo,
-      e.data_evento,
-      e.valor_total AS evento_valor_total
+  return rawSql<Array<{
+    id: string; tipo: string; valor: string; percentual_aplicado: string | null
+    descricao: string | null; evento_id: string | null; created_at: string
+    cliente_id: string; cliente_nome: string; cliente_telefone: string
+    cashback_saldo: string; data_evento: string | null; evento_valor_total: string | null
+  }>>`
+    SELECT ct.id, ct.tipo, ct.valor, ct.percentual_aplicado, ct.descricao,
+           ct.evento_id, ct.created_at,
+           c.id AS cliente_id, c.nome AS cliente_nome, c.telefone AS cliente_telefone,
+           c.cashback_saldo,
+           e.data_evento, e.valor_total AS evento_valor_total
     FROM cashback_transacoes ct
     JOIN clientes c ON c.id = ct.cliente_id
     LEFT JOIN eventos e ON e.id = ct.evento_id
     ORDER BY ct.created_at DESC
     LIMIT ${opts?.limit ?? 200}
     OFFSET ${opts?.offset ?? 0}
-  `)
+  `
 }
 
 export async function getResumosCashbackGlobal() {
-  const res = await db.execute(sql`
+  const res = await rawSql<Array<Record<string, string | number>>>`
     SELECT
       COALESCE(SUM(CASE WHEN tipo = 'credito'  THEN valor::numeric ELSE 0 END), 0) AS total_creditado,
       COALESCE(SUM(CASE WHEN tipo = 'resgate'  THEN ABS(valor::numeric) ELSE 0 END), 0) AS total_resgatado,
@@ -156,8 +131,8 @@ export async function getResumosCashbackGlobal() {
       (SELECT COUNT(*) FROM clientes WHERE cashback_saldo::numeric > 0) AS clientes_com_saldo,
       (SELECT COALESCE(SUM(cashback_saldo::numeric),0) FROM clientes) AS saldo_em_circulacao
     FROM cashback_transacoes
-  `)
-  return (res.rows as Record<string, string | number>[])[0] ?? {}
+  `
+  return res[0] ?? {}
 }
 
 /* ── Roleta: giros disponíveis ───────────────────────────── */
@@ -186,12 +161,12 @@ export async function getGirosDisponiveis(clienteId: string): Promise<number> {
 
 /* ── Admin: dar giros extras ─────────────────────────────── */
 export async function darGirosBonus(clienteId: string, quantidade: number) {
-  await db.execute(sql`
+  await rawSql`
     UPDATE clientes
     SET giros_bonus = giros_bonus + ${quantidade},
         updated_at  = NOW()
     WHERE id = ${clienteId}
-  `)
+  `
 }
 
 export async function getGirosBonusCliente(clienteId: string): Promise<number> {
@@ -238,12 +213,12 @@ export async function creditarPremioRoleta(clienteId: string, valor: number, pre
   // IMPORTANTE: atualiza apenas cashback_saldo (saldo disponível para usar como desconto).
   // NÃO atualiza cashback_total — o total histórico serve para calcular giros disponíveis
   // e só deve crescer com cashback de eventos reais, não com prêmios da roleta.
-  await db.execute(sql`
+  await rawSql`
     UPDATE clientes
     SET cashback_saldo = cashback_saldo + ${valor},
         updated_at     = NOW()
     WHERE id = ${clienteId}
-  `)
+  `
 
   return { valorCreditado: valor, descricao }
 }
@@ -270,12 +245,12 @@ export async function creditarCashbackEvento(eventoId: string, clienteTelefone: 
 
   // Buscar cliente pelo telefone
   const telefoneDigits = clienteTelefone.replace(/\D/g, '')
-  const clienteRes = await db.execute(sql`
+  const clienteRes = await rawSql<Array<{ id: string; cashback_saldo: number; cashback_total: number }>>`
     SELECT id, cashback_saldo, cashback_total FROM clientes
     WHERE regexp_replace(telefone, '[^0-9]', '', 'g') = ${telefoneDigits}
     LIMIT 1
-  `)
-  const clienteRow = (clienteRes.rows as unknown as { id: string; cashback_saldo: number; cashback_total: number }[])[0] ?? null
+  `
+  const clienteRow = clienteRes[0] ?? null
 
   // Verificar se já foi creditado para este evento
   const [jaCreditado] = await db
@@ -298,13 +273,13 @@ export async function creditarCashbackEvento(eventoId: string, clienteTelefone: 
       descricao:          `Cashback ${percentual}% do evento de R$ ${valorTotal.toFixed(2)}`,
     })
 
-    await db.execute(sql`
+    await rawSql`
       UPDATE clientes
       SET cashback_saldo = cashback_saldo + ${valorCashback},
           cashback_total = cashback_total + ${valorCashback},
           updated_at = NOW()
       WHERE id = ${clienteRow.id}
-    `)
+    `
   }
 
   return { valorCashback, percentual, clienteId: clienteRow?.id ?? null }

@@ -1,5 +1,4 @@
-import { neon } from '@neondatabase/serverless'
-import { db } from '../index'
+import { db, rawSql } from '../index'
 import { brinquedos } from '../schema'
 import { eq, and, asc, inArray } from 'drizzle-orm'
 
@@ -43,16 +42,15 @@ export const getBrinquedosByCategoria = (categoria: string) =>
     .orderBy(asc(brinquedos.nome))
 
 export const getBrinquedoHistorico = async (brinquedoId: string) => {
-  const sql = neon(process.env.DATABASE_URL!)
   const [locacoes, topClientes] = await Promise.all([
-    sql`
+    rawSql`
       SELECT id, nome_cliente, telefone_cliente, data_evento, valor_total, status
       FROM eventos
       WHERE ${brinquedoId}::uuid = ANY(brinquedos_contratados)
       ORDER BY data_evento DESC
       LIMIT 20
     `,
-    sql`
+    rawSql`
       SELECT nome_cliente, telefone_cliente, COUNT(*)::int as total
       FROM eventos
       WHERE ${brinquedoId}::uuid = ANY(brinquedos_contratados)

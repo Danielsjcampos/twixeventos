@@ -1,0 +1,56 @@
+services:
+
+  # ─────────────────────────────────────────
+  # Banco de dados PostgreSQL
+  # ─────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: twix_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB:-twixeventos}
+      POSTGRES_USER:     ${POSTGRES_USER:-twix}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - twix_pgdata:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-twix} -d ${POSTGRES_DB:-twixeventos}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - twix_net
+
+  # ─────────────────────────────────────────
+  # Aplicação Next.js
+  # ─────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: twix_app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL:            postgresql://${POSTGRES_USER:-twix}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-twixeventos}
+      NEXTAUTH_URL:            ${NEXTAUTH_URL}
+      NEXTAUTH_SECRET:         ${NEXTAUTH_SECRET}
+      AUTH_SECRET:             ${AUTH_SECRET}
+      RESEND_API_KEY:          ${RESEND_API_KEY}
+      NEXT_PUBLIC_WHATSAPP_NUMBER: ${NEXT_PUBLIC_WHATSAPP_NUMBER}
+      CRON_SECRET:             ${CRON_SECRET}
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    networks:
+      - twix_net
+
+volumes:
+  twix_pgdata:
+    driver: local
+
+networks:
+  twix_net:
+    driver: bridge

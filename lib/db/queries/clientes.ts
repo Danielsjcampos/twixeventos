@@ -1,4 +1,4 @@
-import { db } from '../index'
+import { db, rawSql } from '../index'
 import { clientes, datasComecorativas, eventos } from '../schema'
 import { eq, desc, ilike, or, and, sql } from 'drizzle-orm'
 
@@ -57,18 +57,14 @@ export async function getEventosCliente(clienteId: string) {
 
 // ── Próximos aniversários (30 dias) ──
 export async function getProximosAniversarios(dias = 30) {
-  const rows = await db.execute(sql`
-    SELECT *
-    FROM (
+  return rawSql<Array<{
+    id: string; nome: string; relacao: string; data_nasc: string; ano_nasc: number | null
+    cliente_id: string; cliente_nome: string; cliente_telefone: string; proximo_aniversario: string
+  }>>`
+    SELECT * FROM (
       SELECT
-        dc.id,
-        dc.nome,
-        dc.relacao,
-        dc.data_nasc,
-        dc.ano_nasc,
-        c.id AS cliente_id,
-        c.nome AS cliente_nome,
-        c.telefone AS cliente_telefone,
+        dc.id, dc.nome, dc.relacao, dc.data_nasc, dc.ano_nasc,
+        c.id AS cliente_id, c.nome AS cliente_nome, c.telefone AS cliente_telefone,
         CASE
           WHEN make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int, EXTRACT(MONTH FROM dc.data_nasc)::int, EXTRACT(DAY FROM dc.data_nasc)::int) >= CURRENT_DATE
           THEN make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int, EXTRACT(MONTH FROM dc.data_nasc)::int, EXTRACT(DAY FROM dc.data_nasc)::int)
@@ -80,11 +76,7 @@ export async function getProximosAniversarios(dias = 30) {
     ) sub
     WHERE sub.proximo_aniversario <= CURRENT_DATE + (${dias} * INTERVAL '1 day')
     ORDER BY sub.proximo_aniversario
-  `)
-  return rows.rows as {
-    id: string; nome: string; relacao: string; data_nasc: string; ano_nasc: number | null
-    cliente_id: string; cliente_nome: string; cliente_telefone: string; proximo_aniversario: string
-  }[]
+  `
 }
 
 // ── CRUD ──

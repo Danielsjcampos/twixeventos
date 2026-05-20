@@ -1,0 +1,16 @@
+.git
+.gitignore
+.env*
+!.env.example
+node_modules
+.next
+npm-debug.log*
+README.md
+Dockerfile
+docker-compose*.yml
+.dockerignore
+drizzle/
+public/uploads/
+tests/
+playwright.config.ts
+*.local
