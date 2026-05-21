@@ -10,6 +10,7 @@ import { useScroll } from '@/components/ui/use-scroll';
 import { CartButton } from '@/components/public/CartButton';
 
 const navLinks = [
+  { href: '/', label: 'Início' },
   { href: '/brinquedos', label: 'Brinquedos' },
   { href: '/sobre', label: 'Sobre' },
   { href: '/#contato', label: 'Contato' },
