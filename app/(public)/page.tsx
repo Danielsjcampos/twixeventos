@@ -52,9 +52,9 @@ function pickRandom<T>(arr: T[], n: number): T[] {
 
 export default async function HomePage() {
   const [allDestaques, videoUrl, heroSlidesRaw] = await Promise.all([
-    getBrinquedosDestaque(),
-    getConfig('video_apresentacao'),
-    getConfig('hero_slides'),
+    getBrinquedosDestaque().catch(() => []),
+    getConfig('video_apresentacao').catch(() => null),
+    getConfig('hero_slides').catch(() => null),
   ])
   const destaques = pickRandom(allDestaques, 4)
   const heroSlides = (() => { try { return JSON.parse(heroSlidesRaw ?? '[]') } catch { return [] } })()

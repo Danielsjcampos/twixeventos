@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 export const revalidate = 300 // 5 min
 
 export default async function BrinquedosPage() {
-  const brinquedos = await getBrinquedosAtivos()
+  const brinquedos = await getBrinquedosAtivos().catch(() => [])
 
   return (
     <>

@@ -19,7 +19,7 @@ const links = [
 ]
 
 export default async function BioPage() {
-  const destaques = await getBrinquedosDestaque()
+  const destaques = await getBrinquedosDestaque().catch(() => [])
 
   return (
     <div className="min-h-screen bg-brand-bg flex flex-col items-center py-12 px-4">
