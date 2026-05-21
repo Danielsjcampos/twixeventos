@@ -16,6 +16,10 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'twixeventos.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'web.twixeventos.com',
+      },
     ],
   },
 }
