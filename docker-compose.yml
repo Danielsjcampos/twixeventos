@@ -26,11 +26,7 @@ services:
   # Aplicação Next.js
   # ─────────────────────────────────────────
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: twix_app
-    restart: unless-stopped
+    image: ghcr.io/danielsjcampos/twixeventos:latest
     depends_on:
       - db
     environment:
