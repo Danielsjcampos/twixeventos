@@ -32,8 +32,7 @@ services:
     container_name: twix_app
     restart: unless-stopped
     depends_on:
-      db:
-        condition: service_healthy
+      - db
     environment:
       DATABASE_URL:            postgresql://${POSTGRES_USER:-twix}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-twixeventos}
       NEXTAUTH_URL:            ${NEXTAUTH_URL}
