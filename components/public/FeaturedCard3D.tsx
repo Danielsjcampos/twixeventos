@@ -24,7 +24,7 @@ interface FeaturedCard3DProps {
     categoria: string
     faixaEtaria: string
     capacidade: string
-    fotos: string[] | null
+    fotos?: string[] | null
     fotoDestaque: string | null
     destaque: boolean
     dimensoes: string
@@ -33,7 +33,7 @@ interface FeaturedCard3DProps {
 }
 
 export function FeaturedCard3D({ brinquedo, index }: FeaturedCard3DProps) {
-  const { id, nome, slug, categoria, faixaEtaria, capacidade, fotos, fotoDestaque } = brinquedo
+  const { id, nome, slug, categoria, faixaEtaria, capacidade, fotos, fotoDestaque } = brinquedo // fotos optional — list queries omit it to save bandwidth
   const { add, remove, has, open } = useCart()
   const [mounted, setMounted] = useState(false)
   const [hovered, setHovered] = useState(false)

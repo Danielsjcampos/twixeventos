@@ -2,11 +2,33 @@ import { db, rawSql } from '../index'
 import { brinquedos } from '../schema'
 import { eq, and, asc, inArray } from 'drizzle-orm'
 
+// Colunas para listas/cards — exclui `fotos` (array de base64, potencial de MBs por linha)
+const listColumns = {
+  id:                   brinquedos.id,
+  nome:                 brinquedos.nome,
+  slug:                 brinquedos.slug,
+  descricao:            brinquedos.descricao,
+  categoria:            brinquedos.categoria,
+  faixaEtaria:          brinquedos.faixaEtaria,
+  capacidade:           brinquedos.capacidade,
+  dimensoes:            brinquedos.dimensoes,
+  energia:              brinquedos.energia,
+  fotoDestaque:         brinquedos.fotoDestaque,
+  ativo:                brinquedos.ativo,
+  status:               brinquedos.status,
+  destaque:             brinquedos.destaque,
+  ordemDestaque:        brinquedos.ordemDestaque,
+  precoReferencia:      brinquedos.precoReferencia,
+  monitoresNecessarios: brinquedos.monitoresNecessarios,
+  createdAt:            brinquedos.createdAt,
+  updatedAt:            brinquedos.updatedAt,
+} as const
+
 export const getBrinquedosAtivos = () =>
-  db.select().from(brinquedos).where(eq(brinquedos.status, 'publicado')).orderBy(asc(brinquedos.nome))
+  db.select(listColumns).from(brinquedos).where(eq(brinquedos.status, 'publicado')).orderBy(asc(brinquedos.nome))
 
 export const getBrinquedosDestaque = () =>
-  db.select().from(brinquedos)
+  db.select(listColumns).from(brinquedos)
     .where(and(eq(brinquedos.status, 'publicado'), eq(brinquedos.destaque, true)))
     .orderBy(asc(brinquedos.ordemDestaque))
 
@@ -19,7 +41,7 @@ export const getBrinquedoById = async (id: string) =>
   db.select().from(brinquedos).where(eq(brinquedos.id, id)).limit(1).then(r => r[0] ?? null)
 
 export const getAllBrinquedosAdmin = () =>
-  db.select().from(brinquedos).orderBy(asc(brinquedos.nome))
+  db.select(listColumns).from(brinquedos).orderBy(asc(brinquedos.nome))
 
 export const toggleDestaque = (id: string, value: boolean) =>
   db.update(brinquedos).set({ destaque: value, updatedAt: new Date() }).where(eq(brinquedos.id, id))
@@ -37,7 +59,7 @@ export const deleteBrinquedo = (id: string) =>
   db.delete(brinquedos).where(eq(brinquedos.id, id))
 
 export const getBrinquedosByCategoria = (categoria: string) =>
-  db.select().from(brinquedos)
+  db.select(listColumns).from(brinquedos)
     .where(and(eq(brinquedos.status, 'publicado'), eq(brinquedos.categoria, categoria)))
     .orderBy(asc(brinquedos.nome))
 

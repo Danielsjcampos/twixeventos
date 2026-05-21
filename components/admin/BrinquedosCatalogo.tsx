@@ -17,7 +17,7 @@ interface Brinquedo {
   status: string | null
   destaque: boolean | null
   fotoDestaque: string | null
-  fotos: string[] | null
+  fotos?: string[] | null
 }
 
 /* ─── config de status ──────────────────────────────── */

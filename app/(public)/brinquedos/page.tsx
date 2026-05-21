@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   description: 'Veja todos os brinquedos infláveis e eletrônicos disponíveis para locação em São José dos Campos. Tobogãs, touro mecânico, canhão de espuma e muito mais!',
 }
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 300 // 5 min
 
 export default async function BrinquedosPage() {
   const brinquedos = await getBrinquedosAtivos()

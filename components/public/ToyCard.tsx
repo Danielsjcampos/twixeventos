@@ -15,7 +15,7 @@ interface ToyCardProps {
     categoria: string
     faixaEtaria: string
     capacidade: string
-    fotos: string[] | null
+    fotos?: string[] | null
     fotoDestaque: string | null
     destaque: boolean
     dimensoes: string
@@ -42,7 +42,7 @@ export function ToyCard({ brinquedo }: ToyCardProps) {
   }, [])
 
   const inCart = mounted && has(id)
-  const imageSrc = fotoDestaque ?? (fotos && fotos.length > 0 ? fotos[0] : null)
+  const imageSrc = fotoDestaque ?? (fotos && fotos.length > 0 ? fotos[0] : null) ?? null
   const categoryLabel = CATEGORY_LABELS[categoria] ?? categoria
 
   const handleCart = (e: React.MouseEvent) => {

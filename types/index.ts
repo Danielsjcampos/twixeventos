@@ -8,7 +8,7 @@ export type Brinquedo = {
   capacidade: string
   dimensoes: string
   energia: string | null
-  fotos: string[] | null
+  fotos?: string[] | null
   fotoDestaque: string | null
   ativo: boolean
   status: string

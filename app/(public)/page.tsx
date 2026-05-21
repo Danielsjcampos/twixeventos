@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   description: 'Aluguel de brinquedos infláveis e eletrônicos para festas e eventos em São José dos Campos. +455 avaliações 5 estrelas. Tobogã, touro mecânico, canhão de espuma e muito mais!',
 }
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 300 // 5 min — evita bater no banco a cada visita
 
 const jsonLd = {
   '@context': 'https://schema.org',

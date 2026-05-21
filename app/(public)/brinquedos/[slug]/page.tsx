@@ -6,8 +6,7 @@ import { WhatsAppButton } from '@/components/public/WhatsAppButton'
 import { BrinquedoDetail } from '@/components/public/BrinquedoDetail'
 import type { Metadata } from 'next'
 
-export const revalidate = 3600
-export const dynamic = 'force-dynamic'
+export const revalidate = 3600 // 1h — detalhe do produto muda raramente
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
