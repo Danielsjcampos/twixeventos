@@ -3,6 +3,10 @@
 @import "shadcn/tailwind.css";
 @import "lenis/dist/lenis.css";
 
+@source not "../.agent/**"; /* evita que o scanner do Tailwind v4 processe arquivos de skills/agentes */
+@source not "../scripts/**";
+@source not "../tests/**";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
