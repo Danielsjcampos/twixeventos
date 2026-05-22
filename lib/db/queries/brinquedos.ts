@@ -63,6 +63,51 @@ export const getBrinquedosByCategoria = (categoria: string) =>
     .where(and(eq(brinquedos.status, 'publicado'), eq(brinquedos.categoria, categoria)))
     .orderBy(asc(brinquedos.nome))
 
+export const getBrinquedosChartData = async () => {
+  const [maisLocados, maisReceita, maisLeads, maisOrcamentos] = await Promise.all([
+    // Top 8 mais locados (eventos realizados/confirmados)
+    db.execute(sql`
+      SELECT b.nome, COUNT(*)::int AS total
+      FROM eventos e
+      CROSS JOIN LATERAL unnest(e.brinquedos_contratados) AS toy_id
+      JOIN brinquedos b ON b.id = toy_id
+      WHERE e.status IN ('realizado', 'confirmado')
+      GROUP BY b.nome ORDER BY total DESC LIMIT 8
+    `),
+    // Top 8 maior receita gerada por brinquedo
+    db.execute(sql`
+      SELECT b.nome,
+        ROUND(COALESCE(SUM(
+          e.valor_total::numeric / NULLIF(array_length(e.brinquedos_contratados,1),0)
+        ), 0))::int AS total
+      FROM eventos e
+      CROSS JOIN LATERAL unnest(e.brinquedos_contratados) AS toy_id
+      JOIN brinquedos b ON b.id = toy_id
+      WHERE e.status IN ('realizado', 'confirmado')
+      GROUP BY b.nome ORDER BY total DESC LIMIT 8
+    `),
+    // Top 8 mais aparece nos leads (brinquedos_interesse)
+    db.execute(sql`
+      SELECT b_nome, COUNT(*)::int AS total
+      FROM leads, LATERAL unnest(brinquedos_interesse) AS b_nome
+      GROUP BY b_nome ORDER BY total DESC LIMIT 8
+    `),
+    // Top 8 mais aparece em leads ativos (não perdidos)
+    db.execute(sql`
+      SELECT b_nome, COUNT(*)::int AS total
+      FROM leads, LATERAL unnest(brinquedos_interesse) AS b_nome
+      WHERE status NOT IN ('perdido', 'cancelado')
+      GROUP BY b_nome ORDER BY total DESC LIMIT 8
+    `),
+  ])
+  return {
+    maisLocados:    maisLocados    as unknown as { nome: string; total: number }[],
+    maisReceita:    maisReceita    as unknown as { nome: string; total: number }[],
+    maisLeads:      maisLeads      as unknown as { nome: string; total: number }[],
+    maisOrcamentos: maisOrcamentos as unknown as { nome: string; total: number }[],
+  }
+}
+
 export const getBrinquedoHistorico = async (brinquedoId: string) => {
   const [locacoes, topClientes] = await Promise.all([
     db.execute(sql`
