@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description: 'Brinquedos infláveis e eletrônicos para festas em São José dos Campos. Reserve via WhatsApp!',
 }
 
-export const revalidate = 300 // 5 min
+export const revalidate = 300
 
 const links = [
   { label: '📦 Ver Catálogo Completo',        href: '/brinquedos' },
@@ -19,7 +19,7 @@ const links = [
 ]
 
 export default async function BioPage() {
-  const destaques = await getBrinquedosDestaque().catch(() => [])
+  const destaques = await getBrinquedosDestaque()
 
   return (
     <div className="min-h-screen bg-brand-bg flex flex-col items-center py-12 px-4">

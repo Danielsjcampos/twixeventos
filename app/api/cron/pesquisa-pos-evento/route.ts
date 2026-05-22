@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
-import { rawSql } from '@/lib/db'
+import { db } from '@/lib/db'
+import { eventos } from '@/lib/db/schema'
+import { eq, and, gte, lt, sql, inArray } from 'drizzle-orm'
 import { getConfig } from '@/lib/db/queries/configuracoes'
 import { sendWhatsAppMessage, interpolate } from '@/lib/whatsapp'
 
@@ -25,18 +27,23 @@ export async function GET(request: Request) {
   const alvoInicio = new Date(agora.getTime() - (horas + 1) * 3600000)
   const alvoFim   = new Date(agora.getTime() - horas * 3600000)
 
-  const eventosParaEnviar = await rawSql<Array<{
-    id: string; nome_cliente: string; telefone_cliente: string
-    horario_fim: string; data_evento: string; pesquisa_enviada: boolean | null
-  }>>`
-    SELECT id, nome_cliente, telefone_cliente, horario_fim, data_evento, pesquisa_enviada
+  // Buscar eventos que terminaram exatamente N horas atrás
+  // Usamos data_evento + horario_fim para calcular quando terminou
+  const rows = await db.execute(sql`
+    SELECT id, nome_cliente, telefone_cliente, horario_fim, data_evento,
+           pesquisa_enviada
     FROM eventos
     WHERE status IN ('realizado', 'confirmado')
       AND pesquisa_enviada IS NOT TRUE
       AND (data_evento::date + COALESCE(horario_fim, '20:00')::time) AT TIME ZONE 'America/Sao_Paulo'
           BETWEEN ${alvoInicio.toISOString()} AND ${alvoFim.toISOString()}
     LIMIT 50
-  `
+  `)
+
+  const eventosParaEnviar = rows as unknown as {
+    id: string; nome_cliente: string; telefone_cliente: string
+    horario_fim: string; data_evento: string; pesquisa_enviada: boolean | null
+  }[]
 
   let enviados = 0
   for (const ev of eventosParaEnviar) {
@@ -45,8 +52,9 @@ export async function GET(request: Request) {
     })
     const ok = await sendWhatsAppMessage({ telefone: ev.telefone_cliente, mensagem })
     if (ok) {
+      // Marcar como enviado (adicionar coluna se não existir)
       try {
-        await rawSql`UPDATE eventos SET pesquisa_enviada = true WHERE id = ${ev.id}`
+        await db.execute(sql`UPDATE eventos SET pesquisa_enviada = true WHERE id = ${ev.id}`)
       } catch {
         // Coluna pode não existir ainda — ignorar
       }

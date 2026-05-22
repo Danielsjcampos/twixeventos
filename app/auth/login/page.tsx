@@ -16,8 +16,8 @@ const schema = z.object({
 })
 type FormData = z.infer<typeof schema>
 
-const DEV_EMAIL = 'admin@twixeventos.com'
-const DEV_PASSWORD = 'twix@2025'
+const DEV_EMAIL = 'daniel@twixeventos.com'
+const DEV_PASSWORD = 'admin123'
 
 export default function LoginPage() {
   const router = useRouter()

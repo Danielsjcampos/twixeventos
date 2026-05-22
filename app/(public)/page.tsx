@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   description: 'Aluguel de brinquedos infláveis e eletrônicos para festas e eventos em São José dos Campos. +455 avaliações 5 estrelas. Tobogã, touro mecânico, canhão de espuma e muito mais!',
 }
 
-export const revalidate = 300 // 5 min — evita bater no banco a cada visita
+export const revalidate = 300
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -52,9 +52,9 @@ function pickRandom<T>(arr: T[], n: number): T[] {
 
 export default async function HomePage() {
   const [allDestaques, videoUrl, heroSlidesRaw] = await Promise.all([
-    getBrinquedosDestaque().catch(() => []),
-    getConfig('video_apresentacao').catch(() => null),
-    getConfig('hero_slides').catch(() => null),
+    getBrinquedosDestaque(),
+    getConfig('video_apresentacao'),
+    getConfig('hero_slides'),
   ])
   const destaques = pickRandom(allDestaques, 4)
   const heroSlides = (() => { try { return JSON.parse(heroSlidesRaw ?? '[]') } catch { return [] } })()

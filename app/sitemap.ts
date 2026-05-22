@@ -4,7 +4,6 @@ import { brinquedos } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { getConfig } from '@/lib/db/queries/configuracoes'
 
-export const dynamic = 'force-dynamic'
 export const revalidate = 3600 // regenera a cada 1 hora
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

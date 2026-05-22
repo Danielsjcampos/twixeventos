@@ -11,22 +11,10 @@ export const dynamic = 'force-dynamic'
 async function DashboardContent() {
   const ano = new Date().getFullYear()
   const [metrics, leads, receitaAnual] = await Promise.all([
-    getDashboardMetrics().catch(() => null),
-    getLeadsKanban().catch(() => []),
-    getReceitaPorMes(ano).catch(() => []),
+    getDashboardMetrics(),
+    getLeadsKanban(),
+    getReceitaPorMes(ano),
   ])
-
-  if (!metrics) {
-    return (
-      <div className="p-6 flex flex-col items-center justify-center min-h-[400px] gap-3 text-center">
-        <div className="text-4xl">⚠️</div>
-        <h2 className="text-brand-text font-semibold text-lg">Dashboard temporariamente indisponível</h2>
-        <p className="text-brand-muted text-sm max-w-sm">
-          Não foi possível conectar ao banco de dados. Verifique a variável DATABASE_URL nas configurações do Vercel e faça um redeploy.
-        </p>
-      </div>
-    )
-  }
 
   const limiteAlerta = new Date()
   limiteAlerta.setHours(limiteAlerta.getHours() - 48)

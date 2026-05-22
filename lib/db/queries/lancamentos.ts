@@ -1,6 +1,6 @@
-import { db, rawSql } from '../index'
+import { db } from '../index'
 import { lancamentosFinanceiros, eventos, monitores } from '../schema'
-import { eq, gte, lt, and, sum, desc } from 'drizzle-orm'
+import { eq, gte, lt, and, sum, desc, sql } from 'drizzle-orm'
 
 export type LancamentoInsert = typeof lancamentosFinanceiros.$inferInsert
 
@@ -83,7 +83,7 @@ export const deleteLancamento = (id: string) =>
   db.delete(lancamentosFinanceiros).where(eq(lancamentosFinanceiros.id, id))
 
 export async function getLancamentosAno(ano: number) {
-  return rawSql<Array<{ mes: number; tipo: string; total: number }>>`
+  const rows = await db.execute(sql`
     SELECT
       EXTRACT(MONTH FROM data)::int AS mes,
       tipo,
@@ -93,5 +93,6 @@ export async function getLancamentosAno(ano: number) {
       AND status = 'pago'
     GROUP BY mes, tipo
     ORDER BY mes
-  `
+  `)
+  return rows as unknown as { mes: number; tipo: string; total: number }[]
 }

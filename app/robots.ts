@@ -1,7 +1,6 @@
 import type { MetadataRoute } from 'next'
 import { getConfig } from '@/lib/db/queries/configuracoes'
 
-export const dynamic = 'force-dynamic'
 export const revalidate = 3600
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
