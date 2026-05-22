@@ -42,7 +42,12 @@ export function ToyCard({ brinquedo }: ToyCardProps) {
   }, [])
 
   const inCart = mounted && has(id)
-  const imageSrc = fotoDestaque ?? (fotos && fotos.length > 0 ? fotos[0] : null)
+  // Prioriza fotos uploaded (fotos[]). fotoDestaque só aparece como placeholder
+  // quando não há uploads — pode ser uma URL externa temporária (WordPress etc.)
+  const hasUploads = fotos && fotos.length > 0
+  const imageSrc = hasUploads
+    ? (fotos!.includes(fotoDestaque ?? '') ? fotoDestaque : fotos![0])
+    : fotoDestaque
   const categoryLabel = CATEGORY_LABELS[categoria] ?? categoria
 
   const handleCart = (e: React.MouseEvent) => {

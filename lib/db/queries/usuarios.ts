@@ -1,6 +1,7 @@
 import { db } from '../index'
-import { usuariosSistema } from '../schema'
+import { usuariosSistema, adminUsers } from '../schema'
 import { eq, desc } from 'drizzle-orm'
+import bcrypt from 'bcryptjs'
 
 export type UsuarioRole = 'admin' | 'operador' | 'financeiro' | 'viewer'
 
@@ -41,29 +42,56 @@ export async function getUsuarioById(id: string) {
 }
 
 export async function createUsuario(data: {
-  email: string; nome: string; cargo?: string; role: UsuarioRole
+  email: string; nome: string; cargo?: string; role: UsuarioRole; senha?: string
 }) {
-  return db.insert(usuariosSistema).values({
+  const [usuario] = await db.insert(usuariosSistema).values({
     email: data.email,
     nome: data.nome,
     cargo: data.cargo,
     role: data.role,
     permissoes: ROLES[data.role]?.permissoes ?? [],
   }).returning()
+
+  // Sincroniza admin_users para login
+  if (data.senha) {
+    const passwordHash = await bcrypt.hash(data.senha, 10)
+    await db.insert(adminUsers)
+      .values({ email: data.email, nome: data.nome, passwordHash })
+      .onConflictDoUpdate({
+        target: adminUsers.email,
+        set: { passwordHash, nome: data.nome },
+      })
+  }
+
+  return [usuario]
 }
 
 export async function updateUsuario(id: string, data: Partial<{
-  email: string; nome: string; cargo: string; role: UsuarioRole; ativo: boolean
+  email: string; nome: string; cargo: string; role: UsuarioRole; ativo: boolean; senha: string
 }>) {
-  const permissoes = data.role ? ROLES[data.role]?.permissoes : undefined
-  return db.update(usuariosSistema)
+  const { senha, ...rest } = data
+  const permissoes = rest.role ? ROLES[rest.role]?.permissoes : undefined
+  const [usuario] = await db.update(usuariosSistema)
     .set({
-      ...data,
+      ...rest,
       ...(permissoes ? { permissoes } : {}),
       updatedAt: new Date(),
     })
     .where(eq(usuariosSistema.id, id))
     .returning()
+
+  // Atualiza senha em admin_users se fornecida
+  if (senha && usuario) {
+    const passwordHash = await bcrypt.hash(senha, 10)
+    await db.insert(adminUsers)
+      .values({ email: usuario.email, nome: usuario.nome, passwordHash })
+      .onConflictDoUpdate({
+        target: adminUsers.email,
+        set: { passwordHash },
+      })
+  }
+
+  return [usuario]
 }
 
 export async function deleteUsuario(id: string) {

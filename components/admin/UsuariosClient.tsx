@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Pencil, Trash2, X, Check, Shield, UserCheck, Eye, DollarSign, Users } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Check, Shield, UserCheck, Eye, DollarSign, Users, Lock, EyeOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type Role = 'admin' | 'operador' | 'financeiro' | 'viewer'
@@ -61,6 +61,7 @@ interface FormState {
   email: string
   cargo: string
   role: Role
+  senha: string
 }
 
 function UsuarioModal({
@@ -77,8 +78,10 @@ function UsuarioModal({
     email: usuario?.email ?? '',
     cargo: usuario?.cargo ?? '',
     role: (usuario?.role as Role) ?? 'operador',
+    senha: '',
   })
   const [saving, setSaving] = useState(false)
+  const [showSenha, setShowSenha] = useState(false)
 
   const permissoes = ROLE_PERMISSOES[form.role]
 
@@ -134,6 +137,32 @@ function UsuarioModal({
               className="w-full bg-brand-surface-2 border border-brand-border rounded-xl px-3.5 py-2.5 text-brand-text text-sm focus:outline-none focus:border-brand-accent transition-colors"
               placeholder="Ex: Gerente de Eventos"
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs text-brand-muted uppercase tracking-wider flex items-center gap-1.5">
+              <Lock className="size-3" />
+              Senha de Acesso
+              {usuario && <span className="normal-case font-normal text-brand-muted/60">(deixe em branco para manter)</span>}
+            </label>
+            <div className="relative">
+              <input
+                type={showSenha ? 'text' : 'password'}
+                value={form.senha}
+                onChange={e => setForm(f => ({ ...f, senha: e.target.value }))}
+                required={!usuario}
+                minLength={6}
+                className="w-full bg-brand-surface-2 border border-brand-border rounded-xl px-3.5 py-2.5 pr-10 text-brand-text text-sm focus:outline-none focus:border-brand-accent transition-colors"
+                placeholder={usuario ? '••••••••' : 'Mínimo 6 caracteres'}
+              />
+              <button
+                type="button"
+                onClick={() => setShowSenha(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-muted hover:text-brand-text transition-colors"
+              >
+                {showSenha ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            </div>
           </div>
 
           <div className="space-y-1.5">
@@ -218,10 +247,12 @@ export function UsuariosClient({ usuariosInicial }: { usuariosInicial: Usuario[]
   const [deleting, setDeleting] = useState<string | null>(null)
 
   async function handleSave(data: FormState & { id?: string }) {
+    // Não envia senha vazia para não sobrescrever acidentalmente
+    const payload = { ...data, senha: data.senha.trim() || undefined }
     const res = await fetch('/api/admin/usuarios' + (data.id ? `/${data.id}` : ''), {
       method: data.id ? 'PATCH' : 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     })
     if (!res.ok) return
     const saved = await res.json()

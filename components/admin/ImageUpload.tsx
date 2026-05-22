@@ -37,7 +37,12 @@ export function ImageUpload({ fotos, fotoDestaque, onChange }: Props) {
     }
 
     const newFotos = [...fotos, ...uploaded]
-    const newDestaque = fotoDestaque ?? (uploaded[0] ?? null)
+    // Se fotoDestaque atual NÃO está em fotos[] é uma URL externa (WordPress/temporária)
+    // Nesse caso substitui pelo primeiro upload. Caso contrário mantém a capa escolhida.
+    const isExternalDestaque = fotoDestaque !== null && !fotos.includes(fotoDestaque)
+    const newDestaque = isExternalDestaque
+      ? (uploaded[0] ?? fotoDestaque)
+      : (fotoDestaque ?? uploaded[0] ?? null)
     onChange(newFotos, newDestaque)
     setUploading(false)
     setProgress({ done: 0, total: 0 })
