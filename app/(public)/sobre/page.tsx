@@ -62,7 +62,7 @@ export default function SobrePage() {
                 LOCALIZAÇÃO
               </h2>
               <p className="text-brand-muted">
-                R. Prof. Roberval Fróes, 390 – 143C<br />
+                R. Prof. Roberval Fróes, 390<br />
                 Jardim Esplanada<br />
                 São José dos Campos – SP<br />
                 CEP 12242-460

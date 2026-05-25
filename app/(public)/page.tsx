@@ -31,7 +31,7 @@ const jsonLd = {
   telephone: '+55-12-99649-8725',
   address: {
     '@type': 'PostalAddress',
-    streetAddress: 'R. Prof. Roberval Fróes, 390 – 143C',
+    streetAddress: 'R. Prof. Roberval Fróes, 390',
     addressLocality: 'São José dos Campos',
     addressRegion: 'SP',
     postalCode: '12242-460',
