@@ -23,7 +23,7 @@ const faqs = [
   {
     question: 'Os brinquedos são seguros para crianças?',
     answer:
-      'Sim! Todos os nossos brinquedos passam por inspeção e manutenção regulares. A equipe chega 2 horas antes para montar tudo com segurança e sempre acompanha o evento quando necessário.',
+      'Sim! Todos os nossos brinquedos passam por inspeção e manutenção regulares. A equipe chega entre 1 a 2 horas antes para montar tudo com segurança e sempre acompanha o evento quando necessário.',
   },
   {
     question: 'O que está incluído no aluguel?',
@@ -43,7 +43,7 @@ const faqs = [
   {
     question: 'Quanto tempo antes vocês chegam para montar?',
     answer:
-      'Nossa equipe chega aproximadamente 2 horas antes do horário de início do seu evento para garantir que tudo esteja montado, testado e pronto para a diversão.',
+      'Nossa equipe chega entre 1 a 2 horas antes do horário de início do seu evento para garantir que tudo esteja montado, testado e pronto para a diversão.',
   },
 ]
 

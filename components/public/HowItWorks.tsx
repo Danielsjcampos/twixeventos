@@ -18,7 +18,7 @@ const steps = [
     extra: [
       { titulo: 'Resposta rápida', texto: 'Atendemos de segunda a domingo, das 8h às 22h. Retorno em até 1 hora.' },
       { titulo: 'Reserva segura', texto: '50% de entrada garante sua data. Saldo pago no dia do evento.' },
-      { titulo: 'Orçamento grátis', texto: 'Sem surpresas. Preço fechado antes de confirmar, tudo incluso.' },
+      { titulo: 'Faça seu orçamento', texto: 'Sem surpresas. Preço fechado antes de confirmar, tudo incluso.' },
     ],
     bg: '#0F172A',
     color: '#FFFFFF',
@@ -28,7 +28,7 @@ const steps = [
     num: '03',
     label: 'Agenda',
     title: 'CONFIRMAMOS\nOS\nDETALHES',
-    body: 'Nossa equipe entra em contato para confirmar endereço, horário de montagem e todas as necessidades do seu evento. Chegamos 2 horas antes para garantir tudo certo.',
+    body: 'Nossa equipe entra em contato para confirmar endereço, horário de montagem e todas as necessidades do seu evento. Chegamos entre 1 a 2 horas antes para garantir tudo certo.',
     extra: [
       { titulo: 'Montagem inclusa', texto: 'Cuidamos de tudo — transporte, montagem e desmontagem.' },
       { titulo: 'Equipe treinada', texto: 'Monitores qualificados acompanham o evento para máxima segurança.' },
