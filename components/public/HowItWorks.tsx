@@ -14,10 +14,10 @@ const steps = [
     num: '02',
     label: 'Reserve',
     title: 'FAÇA SUA\nRESERVA',
-    body: 'Entre em contato via WhatsApp ou formulário. Confirmamos disponibilidade na hora e você garante sua reserva com apenas 10% de entrada. Rápido, sem burocracia.',
+    body: 'Entre em contato via WhatsApp ou formulário. Confirmamos disponibilidade na hora e você garante sua reserva com apenas 50% de entrada. Rápido, sem burocracia.',
     extra: [
       { titulo: 'Resposta rápida', texto: 'Atendemos de segunda a domingo, das 8h às 22h. Retorno em até 1 hora.' },
-      { titulo: 'Reserva segura', texto: '10% de entrada garante sua data. Saldo pago no dia do evento.' },
+      { titulo: 'Reserva segura', texto: '50% de entrada garante sua data. Saldo pago no dia do evento.' },
       { titulo: 'Orçamento grátis', texto: 'Sem surpresas. Preço fechado antes de confirmar, tudo incluso.' },
     ],
     bg: '#0F172A',

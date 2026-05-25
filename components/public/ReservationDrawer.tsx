@@ -299,7 +299,7 @@ export function ReservationDrawer() {
                 <p className="text-brand-muted text-xs font-medium uppercase tracking-wide">Próximos passos</p>
                 <p className="text-brand-text text-sm">✅ Aguarde nosso contato</p>
                 <p className="text-brand-text text-sm">📅 Confirme data e endereço</p>
-                <p className="text-brand-text text-sm">💰 Entrada de apenas 10% para reservar</p>
+                <p className="text-brand-text text-sm">💰 Entrada de apenas 50% para reservar</p>
               </div>
               <button
                 onClick={close}

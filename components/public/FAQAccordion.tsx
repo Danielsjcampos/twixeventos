@@ -18,7 +18,7 @@ const faqs = [
   {
     question: 'Como funciona o pagamento e a entrada?',
     answer:
-      'Confirmamos a reserva com apenas 10% de entrada via PIX ou transferência. O restante é pago no dia do evento, antes da montagem dos brinquedos.',
+      'Confirmamos a reserva com apenas 50% de entrada via PIX ou transferência. O restante é pago no dia do evento, antes da montagem dos brinquedos.',
   },
   {
     question: 'Os brinquedos são seguros para crianças?',

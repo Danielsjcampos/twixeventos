@@ -45,7 +45,7 @@ export default function ContatoPage() {
                   <li>1. Escolha o(s) brinquedo(s) do catálogo</li>
                   <li>2. Entre em contato via WhatsApp</li>
                   <li>3. Confirme a data e endereço</li>
-                  <li>4. Pague apenas 10% de entrada para garantir</li>
+                  <li>4. Pague apenas 50% de entrada para garantir</li>
                   <li>5. No dia, chegamos 2h antes para montar!</li>
                 </ol>
               </div>

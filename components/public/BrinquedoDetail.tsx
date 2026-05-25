@@ -190,7 +190,7 @@ export function BrinquedoDetail({ brinquedo }: { brinquedo: Brinquedo }) {
           </div>
 
           <p className="text-brand-muted text-xs mt-4 text-center">
-            Entrada de apenas 10% para garantir a data · Montagem inclusa · Atendimento 24h
+            Entrada de apenas 50% para garantir a data · Montagem inclusa · Atendimento 24h
           </p>
         </div>
       </div>
