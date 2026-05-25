@@ -13,7 +13,7 @@ const faqs = [
   {
     question: 'Qual é o prazo mínimo para reservar?',
     answer:
-      'Recomendamos reservar com pelo menos 7 dias de antecedência, especialmente nos finais de semana. Porém, consulte nossa disponibilidade — às vezes conseguimos atender com menos prazo.',
+      'Recomendamos reservar com antecedência, especialmente nos finais de semana. Consulte nossa disponibilidade — às vezes conseguimos atender com menos prazo.',
   },
   {
     question: 'Como funciona o pagamento e a entrada?',
