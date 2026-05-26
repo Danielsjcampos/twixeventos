@@ -1,5 +1,4 @@
-import postgres from 'postgres'
-const neon = (url: string) => { const sql = postgres(url, { ssl: url.includes('sslmode=require') ? 'require' : false }); return sql }
+import { neon } from '@neondatabase/serverless'
 
 const sql = neon(process.env.DATABASE_URL!)
 

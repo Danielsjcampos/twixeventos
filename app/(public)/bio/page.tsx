@@ -1,6 +1,6 @@
 import { getBrinquedosDestaque } from '@/lib/db/queries/brinquedos'
 import Image from 'next/image'
-import { whatsappLink, WHATSAPP_NUMBER } from '@/lib/utils'
+import { WHATSAPP_NUMBER } from '@/lib/utils'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {

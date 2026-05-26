@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/lib/auth/config'
 import { darGirosBonus, getGirosDisponiveis, getGirosBonusCliente } from '@/lib/db/queries/area-cliente'
 import { db } from '@/lib/db'
 import { clientes } from '@/lib/db/schema'
@@ -8,6 +9,9 @@ interface Params { params: Promise<{ id: string }> }
 
 // GET — retorna giros disponíveis e bonus atual
 export async function GET(_req: NextRequest, { params }: Params) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { id } = await params
   const [girosDisponiveis, girosBonus] = await Promise.all([
     getGirosDisponiveis(id),
@@ -18,6 +22,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
 // POST — dá N giros extras ao cliente
 export async function POST(req: NextRequest, { params }: Params) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { id } = await params
   const { quantidade } = await req.json() as { quantidade: number }
 

@@ -1,5 +1,4 @@
-import postgres from 'postgres'
-const neon = (url: string) => { const sql = postgres(url, { ssl: url.includes('sslmode=require') ? 'require' : false }); return sql }
+import { neon } from '@neondatabase/serverless'
 import { drizzle } from 'drizzle-orm/neon-http'
 import * as schema from '../lib/db/schema'
 

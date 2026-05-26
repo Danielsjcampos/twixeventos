@@ -16,6 +16,7 @@
     "@gsap/react": "^2.1.2",
     "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "^5.2.2",
+    "@neondatabase/serverless": "^1.1.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/react-beautiful-dnd": "^13.1.8",
     "@vercel/blob": "^2.3.3",
@@ -46,6 +47,7 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^20",

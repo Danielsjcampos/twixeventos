@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { eventos } from '@/lib/db/schema'
-import { eq, and, gte, lt, sql, inArray } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import { getConfig } from '@/lib/db/queries/configuracoes'
 import { sendWhatsAppMessage, interpolate } from '@/lib/whatsapp'
 
