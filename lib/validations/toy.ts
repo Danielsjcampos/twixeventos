@@ -16,6 +16,10 @@ export const brinquedoSchema = z.object({
   destaque:        z.boolean().default(false),
   ordemDestaque:   z.number().default(0),
   precoReferencia: z.string().optional().nullable(),
+  tags:            z.array(z.string()).default([]),
+  seoTitle:        z.string().optional().nullable(),
+  seoDescription:  z.string().optional().nullable(),
+  seoKeywords:     z.string().optional().nullable(),
 })
 
 export type BrinquedoInput = z.infer<typeof brinquedoSchema>

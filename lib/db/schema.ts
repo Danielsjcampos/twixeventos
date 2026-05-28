@@ -25,6 +25,12 @@ export const brinquedos = pgTable('brinquedos', {
   ordemDestaque:   integer('ordem_destaque').default(0).notNull(),
   precoReferencia: decimal('preco_referencia', { precision: 10, scale: 2 }),
   monitoresNecessarios: integer('monitores_necessarios').default(1).notNull(),
+  // Categorias adicionais / tags
+  tags:            text('tags').array().default([]),
+  // SEO
+  seoTitle:        text('seo_title'),
+  seoDescription:  text('seo_description'),
+  seoKeywords:     text('seo_keywords'),
   createdAt:       timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt:       timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [

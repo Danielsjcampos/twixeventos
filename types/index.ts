@@ -15,6 +15,10 @@ export type Brinquedo = {
   destaque: boolean
   ordemDestaque: number
   precoReferencia: string | null
+  tags?: string[] | null
+  seoTitle?: string | null
+  seoDescription?: string | null
+  seoKeywords?: string | null
   createdAt: Date
   updatedAt: Date
 }

@@ -20,6 +20,10 @@ const listCols = {
   ordemDestaque:        brinquedos.ordemDestaque,
   precoReferencia:      brinquedos.precoReferencia,
   monitoresNecessarios: brinquedos.monitoresNecessarios,
+  tags:                 brinquedos.tags,
+  seoTitle:             brinquedos.seoTitle,
+  seoDescription:       brinquedos.seoDescription,
+  seoKeywords:          brinquedos.seoKeywords,
   createdAt:            brinquedos.createdAt,
   updatedAt:            brinquedos.updatedAt,
 }
