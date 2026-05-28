@@ -1,4 +1,4 @@
-export const CURRENT_VERSION = '1.6.0'
+export const CURRENT_VERSION = '1.7.0'
 
 export type ChangeType = 'feature' | 'fix' | 'improvement' | 'security'
 
@@ -15,6 +15,15 @@ export interface Version {
 }
 
 export const CHANGELOG: Version[] = [
+  {
+    version: '1.7.0',
+    date: '2026-05-28',
+    title: 'Ajuste no CinematicHero: exibição de estrelas e avaliações',
+    changes: [
+      { type: 'improvement', text: 'Inversão do layout na seção "Excelência Comprovada": agora exibe as 5 Estrelas no centro do círculo (mockup de celular) e a contagem total de "455 Avaliações" no retângulo flutuante superior.' },
+      { type: 'fix', text: 'Remoção de variáveis não utilizadas e simplificação das animações GSAP associadas ao componente CinematicHero para garantir compatibilidade no build.' },
+    ],
+  },
   {
     version: '1.6.0',
     date: '2026-05-18',
