@@ -188,7 +188,6 @@ export function CinematicHero({
   cardHeading = "Fidelidade e Excelência",
   cardDescription = <><span className="text-white font-semibold">Twix Eventos</span> é avaliada com excelência máxima por quem mais importa: nossos clientes. Cada evento é uma história de sucesso construída com dedicação e profissionalismo.</>,
   metricValue = 455,
-  metricLabel = "Avaliações 5★",
   ctaHeading = "O próximo sucesso é o seu.",
   ctaDescription = "Junte-se aos milhares de clientes que confiam na Twix Eventos para transformar momentos em memórias inesquecíveis.",
   className, 
@@ -273,7 +272,6 @@ export function CinematicHero({
         )
         .fromTo(".phone-widget", { y: 40, autoAlpha: 0, scale: 0.95 }, { y: 0, autoAlpha: 1, scale: 1, stagger: 0.15, ease: "back.out(1.2)", duration: 1.5 }, "-=1.5")
         .to(".progress-ring", { strokeDashoffset: 60, duration: 2, ease: "power3.inOut" }, "-=1.2")
-        .to(".counter-val", { innerHTML: metricValue, snap: { innerHTML: 1 }, duration: 2, ease: "expo.out" }, "-=2.0")
         .fromTo(".floating-badge", { y: 100, autoAlpha: 0, scale: 0.7, rotationZ: -10 }, { y: 0, autoAlpha: 1, scale: 1, rotationZ: 0, ease: "back.out(1.5)", duration: 1.5, stagger: 0.2 }, "-=2.0")
         .fromTo(".card-left-text", { x: -50, autoAlpha: 0 }, { x: 0, autoAlpha: 1, ease: "power4.out", duration: 1.5 }, "-=1.5")
         .fromTo(".card-right-text", { x: 50, autoAlpha: 0, scale: 0.8 }, { x: 0, autoAlpha: 1, scale: 1, ease: "expo.out", duration: 1.5 }, "<")
@@ -406,9 +404,13 @@ export function CinematicHero({
                           <circle cx="88" cy="88" r="64" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="12" />
                           <circle className="progress-ring" cx="88" cy="88" r="64" fill="none" stroke="#F59E0B" strokeWidth="12" />
                         </svg>
-                        <div className="text-center z-10 flex flex-col items-center">
-                          <span className="counter-val text-4xl font-extrabold tracking-tighter text-white">0</span>
-                          <span className="text-[8px] text-amber-200/50 uppercase tracking-[0.1em] font-bold mt-0.5">{metricLabel}</span>
+                        <div className="text-center z-10 flex flex-col items-center gap-1">
+                          <div className="flex gap-0.5">
+                            {[...Array(5)].map((_, i) => (
+                              <Star key={i} className="w-6 h-6 text-amber-400 fill-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.9)]" />
+                            ))}
+                          </div>
+                          <span className="text-[8px] text-amber-200/60 uppercase tracking-[0.12em] font-bold">Google Reviews</span>
                         </div>
                       </div>
 
@@ -444,7 +446,7 @@ export function CinematicHero({
                     <Star className="w-4 h-4 lg:w-5 lg:h-5 text-amber-400 fill-amber-400 drop-shadow-lg" />
                   </div>
                   <div>
-                    <p className="text-white text-xs lg:text-sm font-bold tracking-tight">455+ 5 Estrelas</p>
+                    <p className="text-white text-xs lg:text-sm font-bold tracking-tight">{metricValue} Avaliações</p>
                     <p className="text-amber-200/50 text-[10px] lg:text-xs font-medium">No Google Reviews</p>
                   </div>
                 </div>
