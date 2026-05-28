@@ -9,7 +9,7 @@ export type Brinquedo = {
   dimensoes: string
   energia: string | null
   fotos?: string[] | null
-  fotoDestaque: string | null
+  fotoDestaque?: string | null
   ativo: boolean
   status: string
   destaque: boolean

@@ -65,13 +65,13 @@ export default async function BioPage() {
             {destaques.slice(0, 6).map(b => (
               <a key={b.id} href={`/brinquedos/${b.slug}`} className="block">
                 <div className="relative aspect-square rounded-xl overflow-hidden bg-brand-surface border border-brand-border hover:border-brand-accent transition-colors">
-                  {b.fotoDestaque ? (
-                    <Image src={b.fotoDestaque} alt={b.nome} fill className="object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-brand-muted text-xs p-2 text-center">
-                      {b.nome}
-                    </div>
-                  )}
+                  <Image
+                    src={`/api/public/img/${b.id}`}
+                    alt={b.nome}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
                 </div>
                 <p className="text-brand-muted text-[10px] text-center mt-1 truncate">{b.nome}</p>
               </a>

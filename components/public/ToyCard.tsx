@@ -16,10 +16,11 @@ interface ToyCardProps {
     faixaEtaria: string
     capacidade: string
     fotos?: string[] | null
-    fotoDestaque: string | null
+    fotoDestaque?: string | null
     destaque: boolean
     dimensoes: string
   }
+  priority?: boolean
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -31,10 +32,11 @@ const CATEGORY_LABELS: Record<string, string> = {
   aquaticos: 'Aquático',
 }
 
-export function ToyCard({ brinquedo }: ToyCardProps) {
-  const { id, nome, slug, categoria, faixaEtaria, capacidade, fotos, fotoDestaque, destaque } = brinquedo
-  const { add, remove, has, open } = useCart()
+export function ToyCard({ brinquedo, priority = false }: ToyCardProps) {
+  const { id, nome, slug, categoria, faixaEtaria, capacidade, destaque } = brinquedo
+  const { add, remove, has } = useCart()
   const [mounted, setMounted] = useState(false)
+  const [imgError, setImgError] = useState(false)
 
   useEffect(() => {
     useCart.persist.rehydrate()
@@ -42,12 +44,8 @@ export function ToyCard({ brinquedo }: ToyCardProps) {
   }, [])
 
   const inCart = mounted && has(id)
-  // Prioriza fotos uploaded (fotos[]). fotoDestaque só aparece como placeholder
-  // quando não há uploads — pode ser uma URL externa temporária (WordPress etc.)
-  const hasUploads = fotos && fotos.length > 0
-  const imageSrc = hasUploads
-    ? (fotos!.includes(fotoDestaque ?? '') ? fotoDestaque : fotos![0])
-    : fotoDestaque
+  // Imagens servidas via API com Cache-Control — sem base64 no HTML
+  const imageSrc = `/api/public/img/${id}`
   const categoryLabel = CATEGORY_LABELS[categoria] ?? categoria
 
   const handleCart = (e: React.MouseEvent) => {
@@ -69,16 +67,19 @@ export function ToyCard({ brinquedo }: ToyCardProps) {
     >
       {/* Imagem */}
       <Link href={`/brinquedos/${slug}`} className="relative aspect-[4/3] bg-brand-surface-2 overflow-hidden block">
-        {imageSrc ? (
+        {!imgError ? (
           <Image
             src={imageSrc}
             alt={nome}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-300"
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+            priority={priority}
+            onError={() => setImgError(true)}
+            unoptimized
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
+          <div className="w-full h-full flex items-center justify-center bg-brand-surface-2">
             <span className="text-brand-muted text-sm">Sem foto</span>
           </div>
         )}

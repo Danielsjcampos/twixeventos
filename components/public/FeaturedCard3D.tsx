@@ -25,7 +25,7 @@ interface FeaturedCard3DProps {
     faixaEtaria: string
     capacidade: string
     fotos?: string[] | null
-    fotoDestaque: string | null
+    fotoDestaque?: string | null
     destaque: boolean
     dimensoes: string
   }
@@ -33,13 +33,17 @@ interface FeaturedCard3DProps {
 }
 
 export function FeaturedCard3D({ brinquedo, index }: FeaturedCard3DProps) {
-  const { id, nome, slug, categoria, faixaEtaria, capacidade, fotos, fotoDestaque } = brinquedo
-  const { add, remove, has, open } = useCart()
+  const { id, nome, slug, categoria, faixaEtaria, capacidade } = brinquedo
+  const { add, remove, has } = useCart()
   const [mounted, setMounted] = useState(false)
   const [hovered, setHovered] = useState(false)
   const [tilt, setTilt] = useState({ x: 0, y: 0 })
   const [gloss, setGloss] = useState({ x: 50, y: 50 })
+  const [imgError, setImgError] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
+  // Cache rect on mouseenter — avoids repeated getBoundingClientRect reflows on every mousemove
+  const rectRef = useRef<DOMRect | null>(null)
+  const rafRef = useRef<number | null>(null)
 
   useEffect(() => {
     useCart.persist.rehydrate()
@@ -47,27 +51,32 @@ export function FeaturedCard3D({ brinquedo, index }: FeaturedCard3DProps) {
   }, [])
 
   const inCart = mounted && has(id)
-  // Prioriza fotos uploaded (fotos[]). fotoDestaque só aparece como placeholder
-  // quando não há uploads — pode ser uma URL externa temporária (WordPress etc.)
-  const hasUploads = fotos && fotos.length > 0
-  const imageSrc = hasUploads
-    ? (fotos!.includes(fotoDestaque ?? '') ? fotoDestaque : fotos![0])
-    : fotoDestaque
+  // Imagens servidas via API com Cache-Control — sem base64 no HTML
+  const imageSrc = `/api/public/img/${id}`
   const categoryLabel = CATEGORY_LABELS[categoria] ?? categoria
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const el = wrapperRef.current
-    if (!el) return
-    const rect = el.getBoundingClientRect()
-    const x = (e.clientX - rect.left) / rect.width
-    const y = (e.clientY - rect.top) / rect.height
-    setTilt({ x: (y - 0.5) * -18, y: (x - 0.5) * 18 })
-    setGloss({ x: x * 100, y: y * 100 })
+  // Cache the rect on enter — one reflow per hover, not one per pixel
+  const handleMouseEnter = useCallback(() => {
+    if (wrapperRef.current) rectRef.current = wrapperRef.current.getBoundingClientRect()
+    setHovered(true)
   }, [])
 
-  const handleMouseEnter = useCallback(() => setHovered(true), [])
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = rectRef.current
+    if (!rect) return
+    // Batch DOM reads/writes via rAF to prevent forced-reflow on each event
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    rafRef.current = requestAnimationFrame(() => {
+      const x = (e.clientX - rect.left) / rect.width
+      const y = (e.clientY - rect.top) / rect.height
+      setTilt({ x: (y - 0.5) * -18, y: (x - 0.5) * 18 })
+      setGloss({ x: x * 100, y: y * 100 })
+    })
+  }, [])
 
   const handleMouseLeave = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    rectRef.current = null
     setHovered(false)
     setTilt({ x: 0, y: 0 })
     setGloss({ x: 50, y: 50 })
@@ -113,7 +122,7 @@ export function FeaturedCard3D({ brinquedo, index }: FeaturedCard3DProps) {
 
           {/* Image */}
           <Link href={`/brinquedos/${slug}`} className="relative aspect-[4/3] bg-brand-surface-2 overflow-hidden block">
-            {imageSrc ? (
+            {!imgError ? (
               <Image
                 src={imageSrc}
                 alt={nome}
@@ -124,9 +133,12 @@ export function FeaturedCard3D({ brinquedo, index }: FeaturedCard3DProps) {
                   transition: 'transform 500ms cubic-bezier(0.03, 0.98, 0.52, 0.99)',
                 }}
                 sizes="(max-width: 768px) 50vw, 25vw"
+                priority={index === 0}
+                onError={() => setImgError(true)}
+                unoptimized
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center">
+              <div className="w-full h-full flex items-center justify-center bg-brand-surface-2">
                 <span className="text-brand-muted text-sm">Sem foto</span>
               </div>
             )}

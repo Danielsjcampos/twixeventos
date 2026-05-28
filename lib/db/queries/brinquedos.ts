@@ -2,8 +2,9 @@ import { db } from '../index'
 import { brinquedos } from '../schema'
 import { eq, and, asc, inArray, sql } from 'drizzle-orm'
 
-// Colunas para listas — exclui fotos[] (base64 pesado) para reduzir tráfego
-const listCols = {
+// Colunas para listas PÚBLICAS — sem fotos/fotoDestaque (base64, muito pesado)
+// Imagens são servidas via /api/public/img/[id] com Cache-Control adequado
+const publicListCols = {
   id:                   brinquedos.id,
   nome:                 brinquedos.nome,
   slug:                 brinquedos.slug,
@@ -13,7 +14,6 @@ const listCols = {
   capacidade:           brinquedos.capacidade,
   dimensoes:            brinquedos.dimensoes,
   energia:              brinquedos.energia,
-  fotoDestaque:         brinquedos.fotoDestaque,
   ativo:                brinquedos.ativo,
   status:               brinquedos.status,
   destaque:             brinquedos.destaque,
@@ -28,11 +28,17 @@ const listCols = {
   updatedAt:            brinquedos.updatedAt,
 }
 
+// Colunas para listas ADMIN — inclui fotoDestaque para thumbnail no painel
+const listCols = {
+  ...publicListCols,
+  fotoDestaque: brinquedos.fotoDestaque,
+}
+
 export const getBrinquedosAtivos = () =>
-  db.select(listCols).from(brinquedos).where(eq(brinquedos.status, 'publicado')).orderBy(asc(brinquedos.nome))
+  db.select(publicListCols).from(brinquedos).where(eq(brinquedos.status, 'publicado')).orderBy(asc(brinquedos.nome))
 
 export const getBrinquedosDestaque = () =>
-  db.select(listCols).from(brinquedos)
+  db.select(publicListCols).from(brinquedos)
     .where(and(eq(brinquedos.status, 'publicado'), eq(brinquedos.destaque, true)))
     .orderBy(asc(brinquedos.ordemDestaque))
 
@@ -63,7 +69,7 @@ export const deleteBrinquedo = (id: string) =>
   db.delete(brinquedos).where(eq(brinquedos.id, id))
 
 export const getBrinquedosByCategoria = (categoria: string) =>
-  db.select(listCols).from(brinquedos)
+  db.select(publicListCols).from(brinquedos)
     .where(and(eq(brinquedos.status, 'publicado'), eq(brinquedos.categoria, categoria)))
     .orderBy(asc(brinquedos.nome))
 

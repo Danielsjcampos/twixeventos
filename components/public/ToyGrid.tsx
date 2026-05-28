@@ -30,9 +30,9 @@ export function ToyGrid({ brinquedos }: Props) {
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 transition-all duration-300"
           key={categoriaAtiva}
         >
-          {filtered.map((brinquedo) => (
+          {filtered.map((brinquedo, i) => (
             <div key={brinquedo.id} className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <ToyCard brinquedo={brinquedo} />
+              <ToyCard brinquedo={brinquedo} priority={i < 3} />
             </div>
           ))}
         </div>
