@@ -45,6 +45,11 @@ export const eventoSchema = z.object({
   custosExtras:          z.string().optional().nullable(),
   status:                z.string().default('confirmado'),
   observacoes:           z.string().optional().nullable(),
+  valoresExtras:         z.array(z.object({
+    id: z.string(),
+    descricao: z.string(),
+    valor: z.string()
+  })).optional().default([]),
 })
 
 export type EventoInput = z.infer<typeof eventoSchema>

@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { X, CalendarCheck, Loader2 } from 'lucide-react'
+import { X, CalendarCheck, Loader2, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import type { Lead } from '@/types'
@@ -40,8 +40,29 @@ const FORMAS_PAG = [
 
 export function EventoRapidoModal({ lead, onSuccess, onCancel }: Props) {
   const [saving, setSaving] = useState(false)
+  const [todosBrinquedos, setTodosBrinquedos] = useState<{ id: string; nome: string; precoReferencia: string | null }[]>([])
+  const [brinquedosContratados, setBrinquedosContratados] = useState<string[]>([])
+  const [valoresExtras, setValoresExtras] = useState<{ id: string; descricao: string; valor: string }[]>([])
+  const [extraDesc, setExtraDesc] = useState('')
+  const [extraVal, setExtraVal] = useState('')
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
+  useEffect(() => {
+    fetch('/api/admin/brinquedos')
+      .then(res => res.json())
+      .then(data => setTodosBrinquedos(data))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (todosBrinquedos.length > 0 && lead.brinquedosInteresse) {
+      const mapped = lead.brinquedosInteresse
+        .map(name => todosBrinquedos.find(b => b.nome.toLowerCase() === name.toLowerCase())?.id)
+        .filter(Boolean) as string[]
+      setBrinquedosContratados(mapped)
+    }
+  }, [todosBrinquedos, lead.brinquedosInteresse])
+
+  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       nomeCliente:      lead.nome,
@@ -64,9 +85,13 @@ export function EventoRapidoModal({ lead, onSuccess, onCancel }: Props) {
       const payload = {
         ...data,
         leadId: lead.id,
-        brinquedosContratados: lead.brinquedosInteresse ?? [],
+        brinquedosContratados,
+        valoresExtras,
         valorTotal:   data.valorTotal?.trim() || null,
         valorEntrada: data.valorEntrada?.trim() || null,
+        valorRestante: data.valorTotal && data.valorEntrada
+          ? String(Number(data.valorTotal) - Number(data.valorEntrada))
+          : null,
         horarioFim:   data.horarioFim?.trim() || null,
         emailCliente: data.emailCliente?.trim() || null,
         observacoes:  data.observacoes?.trim() || null,
@@ -124,17 +149,141 @@ export function EventoRapidoModal({ lead, onSuccess, onCancel }: Props) {
 
         {/* Body */}
         <form onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
-          {/* Brinquedos do lead */}
-          {(lead.brinquedosInteresse?.length ?? 0) > 0 && (
-            <div className="rounded-xl border p-3 flex flex-wrap gap-1.5" style={{ borderColor: 'var(--brand-border)', backgroundColor: 'var(--brand-surface-2)' }}>
-              <span className="text-xs text-brand-muted w-full mb-1">Brinquedos do interesse:</span>
-              {lead.brinquedosInteresse!.map(b => (
-                <span key={b} className="px-2 py-0.5 rounded-md text-xs font-medium bg-brand-accent/15 text-brand-accent border border-brand-accent/25">
-                  {b}
-                </span>
-              ))}
+          {/* Brinquedos Contratados */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-brand-muted uppercase tracking-wide">Brinquedos Contratados</label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {brinquedosContratados.map(toyId => {
+                const toy = todosBrinquedos.find(t => t.id === toyId)
+                if (!toy) return null
+                return (
+                  <div key={toyId} className="flex items-center gap-2 bg-brand-surface-2 border border-brand-border rounded-xl px-3 py-1.5 text-sm text-brand-text">
+                    <span className="font-semibold">{toy.nome}</span>
+                    {toy.precoReferencia && <span className="text-xs text-brand-accent">(R$ {parseFloat(toy.precoReferencia).toFixed(2)})</span>}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = brinquedosContratados.filter(id => id !== toyId)
+                        setBrinquedosContratados(updated)
+                        if (toy.precoReferencia) {
+                          const currentTotal = parseFloat(watch('valorTotal') || '0')
+                          const toyPrice = parseFloat(toy.precoReferencia)
+                          setValue('valorTotal', Math.max(0, currentTotal - toyPrice).toFixed(2))
+                        }
+                      }}
+                      className="text-brand-muted hover:text-red-400 transition-colors ml-1"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                )
+              })}
+              {brinquedosContratados.length === 0 && (
+                <p className="text-xs text-brand-muted italic">Nenhum brinquedo selecionado.</p>
+              )}
             </div>
-          )}
+            <select
+              value=""
+              onChange={e => {
+                const val = e.target.value
+                if (val && !brinquedosContratados.includes(val)) {
+                  const updated = [...brinquedosContratados, val]
+                  setBrinquedosContratados(updated)
+                  const toy = todosBrinquedos.find(t => t.id === val)
+                  if (toy?.precoReferencia) {
+                    const currentTotal = parseFloat(watch('valorTotal') || '0')
+                    const toyPrice = parseFloat(toy.precoReferencia)
+                    setValue('valorTotal', (currentTotal + toyPrice).toFixed(2))
+                  }
+                }
+              }}
+              className="w-full bg-brand-surface-2 border border-brand-border rounded-lg px-3 py-2 text-brand-text text-sm focus:outline-none focus:border-brand-accent"
+            >
+              <option value="">+ Adicionar brinquedo...</option>
+              {todosBrinquedos
+                .filter(t => !brinquedosContratados.includes(t.id))
+                .map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.nome} {t.precoReferencia ? `(R$ ${parseFloat(t.precoReferencia).toFixed(2)})` : ''}
+                  </option>
+                ))
+              }
+            </select>
+          </div>
+
+          {/* Valores Extras Avulsos */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-brand-muted uppercase tracking-wide">Valores Extras Avulsos</label>
+            <div className="space-y-2 mb-2">
+              {valoresExtras.map(ext => (
+                <div key={ext.id} className="flex items-center justify-between bg-brand-surface-2 border border-brand-border rounded-xl p-3 text-sm">
+                  <span className="text-brand-text font-medium truncate">{ext.descricao}</span>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="font-semibold text-brand-text">R$ {parseFloat(ext.valor).toFixed(2)}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = valoresExtras.filter(item => item.id !== ext.id)
+                        setValoresExtras(updated)
+                        const currentTotal = parseFloat(watch('valorTotal') || '0')
+                        const extValue = parseFloat(ext.valor)
+                        setValue('valorTotal', Math.max(0, currentTotal - extValue).toFixed(2))
+                      }}
+                      className="text-brand-muted hover:text-red-500 transition-colors"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {valoresExtras.length === 0 && (
+                <p className="text-xs text-brand-muted italic">Nenhum valor extra adicionado.</p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Descrição do extra"
+                value={extraDesc}
+                onChange={e => setExtraDesc(e.target.value)}
+                className="flex-1 bg-brand-surface-2 border border-brand-border rounded-lg px-3 py-2 text-brand-text text-sm focus:outline-none focus:border-brand-accent"
+              />
+              <input
+                type="number"
+                step="0.01"
+                placeholder="Valor"
+                value={extraVal}
+                onChange={e => setExtraVal(e.target.value)}
+                className="w-24 bg-brand-surface-2 border border-brand-border rounded-lg px-3 py-2 text-brand-text text-sm focus:outline-none focus:border-brand-accent"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (!extraDesc.trim() || !extraVal.trim()) {
+                    toast.error('Preencha a descrição e valor')
+                    return
+                  }
+                  const newExtra = {
+                    id: Math.random().toString(36).slice(2, 9),
+                    descricao: extraDesc.trim(),
+                    valor: parseFloat(extraVal).toFixed(2)
+                  }
+                  const updated = [...valoresExtras, newExtra]
+                  setValoresExtras(updated)
+                  
+                  const currentTotal = parseFloat(watch('valorTotal') || '0')
+                  const extValue = parseFloat(newExtra.valor)
+                  setValue('valorTotal', (currentTotal + extValue).toFixed(2))
+
+                  setExtraDesc('')
+                  setExtraVal('')
+                }}
+                className="bg-brand-accent hover:bg-brand-accent-hover text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors flex items-center gap-1 shrink-0"
+              >
+                <Plus className="size-3.5" /> Add
+              </button>
+            </div>
+          </div>
 
           {/* Cliente */}
           <div className="grid grid-cols-2 gap-3">

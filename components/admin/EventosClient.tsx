@@ -78,6 +78,8 @@ interface Evento {
   checklistMontagem?: CheckItem[] | unknown
   monitoresEvento?: EventoMonitor[]
   pagamentos?: Pagamento[]
+  brinquedosContratados?: string[] | null
+  valoresExtras?: any
 }
 
 // ─── Status configs ────────────────────────────────────────────────────────────
@@ -110,6 +112,15 @@ export function EventosClient({
   monitoresDisponiveis: Monitor[]
 }) {
   const [eventos, setEventos] = useState(initial)
+  const [todosBrinquedos, setTodosBrinquedos] = useState<{ id: string; nome: string; precoReferencia: string | null; categoria: string }[]>([])
+
+  useEffect(() => {
+    fetch('/api/admin/brinquedos')
+      .then(res => res.json())
+      .then(data => setTodosBrinquedos(data))
+      .catch(() => {})
+  }, [])
+
   const [expanded, setExpanded] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editEvento, setEditEvento] = useState<Evento | null>(null)
@@ -217,6 +228,7 @@ export function EventosClient({
           evento={editEvento}
           onSave={afterSave}
           onCancel={() => { setShowForm(false); setEditEvento(null) }}
+          todosBrinquedos={todosBrinquedos}
         />
       )}
 
@@ -278,6 +290,7 @@ export function EventosClient({
                   <EventoDetail
                     evento={ev!}
                     monitoresDisponiveis={monitoresDisponiveis}
+                    todosBrinquedos={todosBrinquedos}
                     onStatusChange={s => updateStatus(evento.id, s)}
                     onDetailUpdate={updated => setDetail(d => ({ ...d, [evento.id]: { ...d[evento.id], ...updated } }))}
                   />
@@ -296,11 +309,13 @@ export function EventosClient({
 function EventoDetail({
   evento,
   monitoresDisponiveis,
+  todosBrinquedos,
   onStatusChange,
   onDetailUpdate,
 }: {
   evento: Evento
   monitoresDisponiveis: Monitor[]
+  todosBrinquedos: { id: string; nome: string }[]
   onStatusChange: (s: string) => void
   onDetailUpdate: (data: Partial<Evento>) => void
 }) {
@@ -447,6 +462,38 @@ function EventoDetail({
             <InfoRow label="Endereço" value={evento.enderecoCompleto} />
             {evento.regiaoEvento && <InfoRow label="Região" value={evento.regiaoEvento} />}
             {evento.observacoes && <InfoRow label="Observações" value={evento.observacoes} className="sm:col-span-2" />}
+
+            {/* Brinquedos Contratados list in Info Tab */}
+            {evento.brinquedosContratados && evento.brinquedosContratados.length > 0 && (
+              <div className="sm:col-span-2 mt-2">
+                <p className="text-brand-muted text-xs mb-1.5 font-semibold uppercase tracking-wider">Brinquedos Contratados</p>
+                <div className="flex flex-wrap gap-2">
+                  {evento.brinquedosContratados.map((toyId: string) => {
+                    const toy = todosBrinquedos.find(t => t.id === toyId)
+                    return (
+                      <span key={toyId} className="px-2.5 py-1 rounded-lg bg-brand-surface-2 border border-brand-border text-xs text-brand-text font-medium">
+                        🎪 {toy ? toy.nome : 'Brinquedo'}
+                      </span>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Valores Extras list in Info Tab */}
+            {evento.valoresExtras && (evento.valoresExtras as any[]).length > 0 && (
+              <div className="sm:col-span-2 mt-2">
+                <p className="text-brand-muted text-xs mb-1.5 font-semibold uppercase tracking-wider">Valores Extras Avulsos</p>
+                <div className="space-y-1.5">
+                  {(evento.valoresExtras as any[]).map(ext => (
+                    <div key={ext.id} className="flex justify-between items-center max-w-md bg-brand-surface-2 border border-brand-border rounded-lg px-3 py-1.5 text-xs text-brand-text">
+                      <span>🏷️ {ext.descricao}</span>
+                      <span className="font-semibold text-brand-accent">R$ {parseFloat(ext.valor).toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -620,6 +667,8 @@ interface EventoFormData {
   custoTransporte: string
   custosExtras: string
   observacoes: string
+  brinquedosContratados: string[]
+  valoresExtras: { id: string; descricao: string; valor: string }[]
 }
 
 const emptyForm: EventoFormData = {
@@ -631,6 +680,8 @@ const emptyForm: EventoFormData = {
   status: 'confirmado',
   custoTransporte: '', custosExtras: '',
   observacoes: '',
+  brinquedosContratados: [],
+  valoresExtras: [],
 }
 
 // ─── ClienteSelector ─────────────────────────────────────────────────────────
@@ -912,11 +963,15 @@ function ClienteSelector({ onSelect, disabled }: {
 
 const inp = 'w-full bg-brand-surface border border-brand-border rounded-xl px-3 py-2 text-sm text-brand-text placeholder:text-brand-muted focus:outline-none focus:border-brand-accent transition-colors'
 
-function EventoForm({ evento, onSave, onCancel }: {
+function EventoForm({ evento, onSave, onCancel, todosBrinquedos }: {
   evento: Evento | null
   onSave: (e: Evento) => void
   onCancel: () => void
+  todosBrinquedos: { id: string; nome: string; precoReferencia: string | null; categoria: string }[]
 }) {
+  const [extraDesc, setExtraDesc] = useState('')
+  const [extraVal, setExtraVal] = useState('')
+
   const [form, setForm] = useState<EventoFormData>(evento ? {
     nomeCliente: evento.nomeCliente,
     telefoneCliente: evento.telefoneCliente,
@@ -934,6 +989,8 @@ function EventoForm({ evento, onSave, onCancel }: {
     custoTransporte: evento.custoTransporte ?? '',
     custosExtras: evento.custosExtras ?? '',
     observacoes: evento.observacoes ?? '',
+    brinquedosContratados: evento.brinquedosContratados ?? [],
+    valoresExtras: (evento.valoresExtras as any[]) ?? [],
   } : emptyForm)
 
   const [loading, setLoading] = useState(false)
@@ -1063,6 +1120,145 @@ function EventoForm({ evento, onSave, onCancel }: {
             <Field label="Horário fim" value={form.horarioFim} onChange={v => set('horarioFim', v)} type="time" />
             <Field label="Endereço *" value={form.enderecoCompleto} onChange={v => set('enderecoCompleto', v)} placeholder="Rua, número, bairro" className="sm:col-span-2" />
             <Field label="Região" value={form.regiaoEvento} onChange={v => set('regiaoEvento', v)} placeholder="SJC, Jacareí..." />
+          </div>
+
+          <SectionTitle>Brinquedos Contratados</SectionTitle>
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              {form.brinquedosContratados.map(toyId => {
+                const toy = todosBrinquedos.find(t => t.id === toyId)
+                if (!toy) return null
+                return (
+                  <div key={toyId} className="flex items-center gap-2 bg-brand-surface-2 border border-brand-border rounded-xl px-3 py-1.5 text-sm text-brand-text">
+                    <span className="font-semibold">{toy.nome}</span>
+                    {toy.precoReferencia && <span className="text-xs text-brand-accent">(Ref: R$ {parseFloat(toy.precoReferencia).toFixed(2)})</span>}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = form.brinquedosContratados.filter(id => id !== toyId)
+                        set('brinquedosContratados', updated as any)
+                        if (toy.precoReferencia) {
+                          const currentTotal = parseFloat(form.valorTotal || '0')
+                          const toyPrice = parseFloat(toy.precoReferencia)
+                          set('valorTotal', Math.max(0, currentTotal - toyPrice).toFixed(2))
+                        }
+                      }}
+                      className="text-brand-muted hover:text-red-400 transition-colors ml-1"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                )
+              })}
+              {form.brinquedosContratados.length === 0 && (
+                <p className="text-xs text-brand-muted italic">Nenhum brinquedo selecionado ainda.</p>
+              )}
+            </div>
+            <div>
+              <select
+                value=""
+                onChange={e => {
+                  const val = e.target.value
+                  if (val && !form.brinquedosContratados.includes(val)) {
+                    const updated = [...form.brinquedosContratados, val]
+                    set('brinquedosContratados', updated as any)
+                    
+                    const toy = todosBrinquedos.find(t => t.id === val)
+                    if (toy?.precoReferencia) {
+                      const currentTotal = parseFloat(form.valorTotal || '0')
+                      const toyPrice = parseFloat(toy.precoReferencia)
+                      set('valorTotal', (currentTotal + toyPrice).toFixed(2))
+                    }
+                  }
+                }}
+                className="w-full bg-brand-surface-2 border border-brand-border rounded-lg px-3 py-2 text-brand-text text-sm focus:outline-none focus:border-brand-accent"
+              >
+                <option value="">+ Adicionar brinquedo...</option>
+                {todosBrinquedos
+                  .filter(t => !form.brinquedosContratados.includes(t.id))
+                  .map(t => (
+                    <option key={t.id} value={t.id}>
+                      {t.nome} {t.precoReferencia ? `(R$ ${parseFloat(t.precoReferencia).toFixed(2)})` : ''}
+                    </option>
+                  ))
+                }
+              </select>
+            </div>
+          </div>
+
+          <SectionTitle>Valores Extras Avulsos</SectionTitle>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              {form.valoresExtras.map(ext => (
+                <div key={ext.id} className="flex items-center justify-between bg-brand-surface-2 border border-brand-border rounded-xl p-3 text-sm">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-brand-text font-medium truncate">{ext.descricao}</p>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="font-semibold text-brand-text">R$ {parseFloat(ext.valor).toFixed(2)}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = form.valoresExtras.filter(item => item.id !== ext.id)
+                        set('valoresExtras', updated as any)
+                        const currentTotal = parseFloat(form.valorTotal || '0')
+                        const extValue = parseFloat(ext.valor)
+                        set('valorTotal', Math.max(0, currentTotal - extValue).toFixed(2))
+                      }}
+                      className="text-brand-muted hover:text-red-500 transition-colors"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {form.valoresExtras.length === 0 && (
+                <p className="text-xs text-brand-muted italic">Nenhum valor extra adicionado.</p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Descrição do extra (ex: Monitor Extra)"
+                value={extraDesc}
+                onChange={e => setExtraDesc(e.target.value)}
+                className="flex-1 bg-brand-surface-2 border border-brand-border rounded-lg px-3 py-2 text-brand-text text-sm focus:outline-none focus:border-brand-accent"
+              />
+              <input
+                type="number"
+                step="0.01"
+                placeholder="Valor (R$)"
+                value={extraVal}
+                onChange={e => setExtraVal(e.target.value)}
+                className="w-24 bg-brand-surface-2 border border-brand-border rounded-lg px-3 py-2 text-brand-text text-sm focus:outline-none focus:border-brand-accent"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (!extraDesc.trim() || !extraVal.trim()) {
+                    toast.error('Preencha a descrição e valor do extra')
+                    return
+                  }
+                  const newExtra = {
+                    id: Math.random().toString(36).slice(2, 9),
+                    descricao: extraDesc.trim(),
+                    valor: parseFloat(extraVal).toFixed(2)
+                  }
+                  const updated = [...form.valoresExtras, newExtra]
+                  set('valoresExtras', updated as any)
+                  
+                  const currentTotal = parseFloat(form.valorTotal || '0')
+                  const extValue = parseFloat(newExtra.valor)
+                  set('valorTotal', (currentTotal + extValue).toFixed(2))
+
+                  setExtraDesc('')
+                  setExtraVal('')
+                }}
+                className="bg-brand-accent hover:bg-brand-accent-hover text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors flex items-center gap-1 shrink-0"
+              >
+                <Plus className="size-3.5" /> Add
+              </button>
+            </div>
           </div>
 
           <SectionTitle>Financeiro</SectionTitle>

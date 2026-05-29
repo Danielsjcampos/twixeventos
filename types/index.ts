@@ -96,6 +96,7 @@ export type Evento = {
   checklistDesmontagem: ChecklistItem[]
   status: string
   observacoes: string | null
+  valoresExtras?: any
   createdAt: Date
   updatedAt: Date
 }

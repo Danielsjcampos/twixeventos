@@ -1,4 +1,4 @@
-export const CURRENT_VERSION = '1.7.0'
+export const CURRENT_VERSION = '1.7.1'
 
 export type ChangeType = 'feature' | 'fix' | 'improvement' | 'security'
 
@@ -15,6 +15,18 @@ export interface Version {
 }
 
 export const CHANGELOG: Version[] = [
+  {
+    version: '1.7.1',
+    date: '2026-05-29',
+    title: 'CRM Lead Deletion & Enhanced Event Customization',
+    changes: [
+      { type: 'feature', text: 'Botão para excluir permanentemente um lead do CRM com popup de confirmação no painel administrativo.' },
+      { type: 'feature', text: 'Suporte a múltiplos brinquedos contratados por festa/evento (pesquisa e badges interativos).' },
+      { type: 'feature', text: 'Suporte a valores extras avulsos personalizados (com descrição e preço avulso) integrados no cálculo da festa.' },
+      { type: 'improvement', text: 'Calculadora integrada de valor total, sinal, forma de pagamento e valor restante em tempo real para novos eventos e conversões rápidas de leads.' },
+      { type: 'improvement', text: 'Visualização completa dos brinquedos contratados e valores extras avulsos no painel expandido de detalhes do evento.' },
+    ],
+  },
   {
     version: '1.7.0',
     date: '2026-05-28',

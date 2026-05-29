@@ -136,6 +136,7 @@ export const eventos = pgTable('eventos', {
   // Status do evento
   status:                text('status').default('orcamento').notNull(),
   observacoes:           text('observacoes'),
+  valoresExtras:         jsonb('valores_extras').default([]),
   fotosMontagem:         text('fotos_montagem').array().default([]),
   createdAt:             timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt:             timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
@@ -378,3 +379,25 @@ export const lancamentosFinanceirosRelations = relations(lancamentosFinanceiros,
   evento:  one(eventos,   { fields: [lancamentosFinanceiros.eventoId],  references: [eventos.id] }),
   monitor: one(monitores, { fields: [lancamentosFinanceiros.monitorId], references: [monitores.id] }),
 }))
+
+// ============================================
+// glossario_termos
+// ============================================
+export const glossarioTermos = pgTable('glossario_termos', {
+  id:             uuid('id').primaryKey().defaultRandom(),
+  termo:          text('termo').notNull(),
+  slug:           text('slug').notNull().unique(),
+  letra:          text('letra').notNull(), // A, B, C...
+  nicho:          text('nicho').notNull(), // Nicho de mercado
+  conteudo:       text('conteudo'),        // HTML da definição (500+ palavras)
+  status:         text('status').default('pendente').notNull(), // pendente | publicado
+  seoTitle:       text('seo_title'),
+  seoDescription: text('seo_description'),
+  createdAt:      timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:      timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('idx_glossario_letra').on(t.letra),
+  index('idx_glossario_status').on(t.status),
+  index('idx_glossario_slug').on(t.slug),
+])
+

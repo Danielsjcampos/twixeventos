@@ -14,6 +14,7 @@ import {
   Package,
   MessageCircle,
   CalendarCheck,
+  Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn, whatsappLink, STATUS_KANBAN, formatCurrency, formatPhone } from '@/lib/utils'
@@ -39,6 +40,7 @@ export function LeadModal({ lead, onClose, onUpdate }: Props) {
   const [novoConteudo, setNovoConteudo] = useState('')
   const [sending, setSending] = useState(false)
   const [convertendo, setConvertendo] = useState(false)
+  const [deletando, setDeletando] = useState(false)
 
   if (!lead) return null
 
@@ -96,6 +98,26 @@ export function LeadModal({ lead, onClose, onUpdate }: Props) {
     }
   }
 
+  const handleExcluirLead = async () => {
+    if (!window.confirm('Tem certeza de que deseja excluir permanentemente este lead?')) return
+    setDeletando(true)
+    try {
+      const res = await fetch(`/api/admin/leads/${lead.id}`, {
+        method: 'DELETE',
+      })
+
+      if (!res.ok) throw new Error()
+
+      toast.success('Lead excluído com sucesso!')
+      onUpdate()
+      onClose()
+    } catch {
+      toast.error('Erro ao excluir lead')
+    } finally {
+      setDeletando(false)
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex">
       {/* Backdrop */}
@@ -140,21 +162,32 @@ export function LeadModal({ lead, onClose, onUpdate }: Props) {
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-6">
           {/* Action buttons */}
-          <div className="flex gap-2">
-            <a href={waLink} target="_blank" rel="noopener noreferrer" className="flex-1">
-              <Button className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white">
-                <MessageCircle size={16} />
-                Enviar WhatsApp
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <a href={waLink} target="_blank" rel="noopener noreferrer" className="flex-1">
+                <Button className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white">
+                  <MessageCircle size={16} />
+                  Enviar WhatsApp
+                </Button>
+              </a>
+              <Button
+                onClick={handleConverterEvento}
+                disabled={convertendo}
+                variant="outline"
+                className="flex-1 gap-2 border-orange-500/50 text-orange-400 hover:bg-orange-500/10"
+              >
+                <CalendarCheck size={16} />
+                {convertendo ? 'Convertendo...' : 'Converter em Evento'}
               </Button>
-            </a>
+            </div>
             <Button
-              onClick={handleConverterEvento}
-              disabled={convertendo}
+              onClick={handleExcluirLead}
+              disabled={deletando}
               variant="outline"
-              className="flex-1 gap-2 border-orange-500/50 text-orange-400 hover:bg-orange-500/10"
+              className="w-full gap-2 border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500/50 hover:text-red-300 transition-colors"
             >
-              <CalendarCheck size={16} />
-              {convertendo ? 'Convertendo...' : 'Converter em Evento'}
+              <Trash2 size={16} />
+              {deletando ? 'Excluindo...' : 'Excluir Lead'}
             </Button>
           </div>
 
