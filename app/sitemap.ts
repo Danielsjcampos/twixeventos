@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next'
 import { db } from '@/lib/db'
-import { brinquedos } from '@/lib/db/schema'
+import { brinquedos, glossarioTermos } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { getConfig } from '@/lib/db/queries/configuracoes'
 
@@ -47,6 +47,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // silencia erro para não quebrar o sitemap se o DB estiver indisponível
   }
 
+  // ── Glossário (verbetes publicados) ──────────────────────────
+  let glossarioUrls: MetadataRoute.Sitemap = []
+  try {
+    const lista = await db
+      .select({ slug: glossarioTermos.slug, updatedAt: glossarioTermos.updatedAt })
+      .from(glossarioTermos)
+      .where(eq(glossarioTermos.status, 'publicado'))
+
+    glossarioUrls = [
+      { url: `${base}/glossario`, lastModified: agora, changeFrequency: 'daily', priority: 0.8 },
+      ...lista.map(g => ({
+        url: `${base}/glossario/${g.slug}`,
+        lastModified: g.updatedAt,
+        changeFrequency: freq,
+        priority: prio,
+      }))
+    ]
+  } catch {
+    // silencia erro para não quebrar o sitemap se o DB estiver indisponível
+  }
+
   // ── Blog (opcional, ativado nas configs) ──────────────────────
   // Estrutura preparada para quando o blog for implementado
   const blogUrls: MetadataRoute.Sitemap = []
@@ -56,5 +77,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // blogUrls = posts.map(p => ({ url: `${base}/blog/${p.slug}`, ... }))
   }
 
-  return [...estaticas, ...brinquedosUrls, ...blogUrls]
+  return [...estaticas, ...brinquedosUrls, ...glossarioUrls, ...blogUrls]
 }
