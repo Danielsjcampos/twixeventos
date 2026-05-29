@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { brinquedos } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 
 // Placeholder SVG returned when no image exists
 const PLACEHOLDER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
@@ -15,14 +15,17 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params
 
   try {
+    // Fetch ONLY one image element (not the whole fotos[] array) to keep
+    // Neon egress minimal: fotoDestaque, falling back to the first foto.
     const [row] = await db
-      .select({ fotoDestaque: brinquedos.fotoDestaque, fotos: brinquedos.fotos })
+      .select({
+        img: sql<string | null>`coalesce(${brinquedos.fotoDestaque}, ${brinquedos.fotos}[1])`,
+      })
       .from(brinquedos)
       .where(eq(brinquedos.id, id))
       .limit(1)
 
-    // Pick best available image: fotoDestaque first, then first in fotos[]
-    const dataUrl = row?.fotoDestaque ?? row?.fotos?.[0] ?? null
+    const dataUrl = row?.img ?? null
 
     if (!dataUrl || !dataUrl.startsWith('data:')) {
       // Return SVG placeholder
