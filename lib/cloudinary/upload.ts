@@ -40,24 +40,25 @@ export async function toWebP(file: File, maxWidth = 1400, quality = 0.85): Promi
   })
 }
 
-/** Lê um File e retorna uma string data URL base64 (data:image/webp;base64,…) */
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(new Error('Falha ao ler arquivo'))
-    reader.readAsDataURL(file)
-  })
-}
-
 /**
- * "Sobe" a imagem — na verdade só converte para base64 data URL.
- * A string retornada vai direto pra coluna do banco (TEXT/text[]).
+ * Envia o arquivo de imagem para o Vercel Blob e retorna a URL permanente pública CDN.
+ * A URL retornada vai direto para a coluna do banco (TEXT/text[]).
  */
 export async function uploadImage(file: File): Promise<string> {
-  const dataUrl = await fileToDataUrl(file)
   const originalKB = Math.round(file.size / 1024)
-  const base64KB   = Math.round((dataUrl.length * 0.75) / 1024) // base64 ≈ 4/3 do binário
-  console.info(`[upload] ✅ WebP base64 inline: original=${originalKB}KB · base64=${base64KB}KB`)
-  return dataUrl
+  console.info(`[upload] ⏳ Enviando para o Vercel Blob: nome=${file.name} · tamanho=${originalKB}KB`)
+
+  const res = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, {
+    method: 'POST',
+    body: file,
+  })
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}))
+    throw new Error(errorData.message || 'Erro ao realizar upload para o Vercel Blob')
+  }
+
+  const data = await res.json()
+  console.info(`[upload] ✅ Upload concluído com sucesso: ${data.url}`)
+  return data.url
 }
