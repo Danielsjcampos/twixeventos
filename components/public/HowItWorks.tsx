@@ -76,7 +76,7 @@ export function HowItWorks() {
             <div>
               <h2
                 className="font-[family-name:var(--font-display)] font-black leading-[0.85] uppercase tracking-tight"
-                style={{ fontSize: 'clamp(3.5rem, 12vw, 11rem)' }}
+                style={{ fontSize: 'clamp(2rem, 10vw, 11rem)' }}
               >
                 {step.title.split('\n').map((line, j) => (
                   <span key={j} className="block">{line}</span>
