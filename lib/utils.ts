@@ -20,13 +20,14 @@ export function formatCurrency(value: string | number | null | undefined) {
 
 export function slugify(text: string) {
   return text
+    .trim()
     .toLowerCase()
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9\s-]/g, '')
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
-    .trim()
+    .replace(/^-+|-+$/g, '')
 }
 
 export function whatsappLink(number: string, message: string) {

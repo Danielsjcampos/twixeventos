@@ -310,6 +310,7 @@ export function ToyForm({ brinquedo, onSuccess }: Props) {
 
     const payload = {
       ...data,
+      slug: slugify(data.slug || data.nome),
       precoReferencia: data.precoReferencia?.trim() || null,
       energia: data.energia?.trim() || null,
       descricao: data.descricao?.trim() || null,

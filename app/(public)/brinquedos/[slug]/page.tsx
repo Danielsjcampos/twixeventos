@@ -1,4 +1,4 @@
-import { getBrinquedoBySlug } from '@/lib/db/queries/brinquedos'
+import { getBrinquedoBySlug, getBrinquedoMetadataBySlug } from '@/lib/db/queries/brinquedos'
 import { notFound } from 'next/navigation'
 import { Header } from '@/components/public/Header'
 import { Footer } from '@/components/public/Footer'
@@ -10,7 +10,7 @@ export const revalidate = 3600
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
-  const b = await getBrinquedoBySlug(slug)
+  const b = await getBrinquedoMetadataBySlug(slug)
   if (!b) return {}
   return {
     title: `Aluguel de ${b.nome} em SJC`,

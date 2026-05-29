@@ -42,6 +42,19 @@ export const getBrinquedosDestaque = () =>
     .where(and(eq(brinquedos.status, 'publicado'), eq(brinquedos.destaque, true)))
     .orderBy(asc(brinquedos.ordemDestaque))
 
+export const getBrinquedoMetadataBySlug = async (slug: string) =>
+  db.select({
+    id: brinquedos.id,
+    nome: brinquedos.nome,
+    slug: brinquedos.slug,
+    faixaEtaria: brinquedos.faixaEtaria,
+    capacidade: brinquedos.capacidade,
+    dimensoes: brinquedos.dimensoes,
+    status: brinquedos.status,
+  }).from(brinquedos)
+    .where(and(eq(brinquedos.slug, slug), inArray(brinquedos.status, ['publicado', 'invisivel'])))
+    .limit(1).then(r => r[0] ?? null)
+
 export const getBrinquedoBySlug = async (slug: string) =>
   db.select().from(brinquedos)
     .where(and(eq(brinquedos.slug, slug), inArray(brinquedos.status, ['publicado', 'invisivel'])))

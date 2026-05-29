@@ -115,7 +115,7 @@ export function EventosClient({
   const [todosBrinquedos, setTodosBrinquedos] = useState<{ id: string; nome: string; precoReferencia: string | null; categoria: string }[]>([])
 
   useEffect(() => {
-    fetch('/api/admin/brinquedos')
+    fetch('/api/admin/brinquedos?light=true')
       .then(res => res.json())
       .then(data => setTodosBrinquedos(data))
       .catch(() => {})

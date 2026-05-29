@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/config'
 import { getBrinquedoById, updateBrinquedo, deleteBrinquedo } from '@/lib/db/queries/brinquedos'
+import { brinquedoSchema } from '@/lib/validations/toy'
+import { slugify } from '@/lib/utils'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
@@ -18,10 +20,19 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   try {
     const body = await request.json()
-    const updated = await updateBrinquedo(id, body)
+    if (body.slug) {
+      body.slug = slugify(body.slug)
+    }
+    const data = brinquedoSchema.partial().parse(body)
+    const updated = await updateBrinquedo(id, data)
     return NextResponse.json(updated)
   } catch (error) {
     console.error('[PATCH /api/admin/brinquedos/id]', error)
+    if (error && typeof error === 'object' && 'name' in error && error.name === 'ZodError') {
+      const errs = (error as any).errors as { path: string[]; message: string }[]
+      const msg = errs.map(e => `${e.path.join('.')}: ${e.message}`).join(' | ')
+      return NextResponse.json({ message: msg }, { status: 400 })
+    }
     const msg = error instanceof Error ? error.message : 'Erro ao atualizar'
     return NextResponse.json({ message: msg }, { status: 500 })
   }

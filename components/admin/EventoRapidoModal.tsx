@@ -47,7 +47,7 @@ export function EventoRapidoModal({ lead, onSuccess, onCancel }: Props) {
   const [extraVal, setExtraVal] = useState('')
 
   useEffect(() => {
-    fetch('/api/admin/brinquedos')
+    fetch('/api/admin/brinquedos?light=true')
       .then(res => res.json())
       .then(data => setTodosBrinquedos(data))
       .catch(() => {})

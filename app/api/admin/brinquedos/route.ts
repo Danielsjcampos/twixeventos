@@ -1,11 +1,21 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/config'
-import { getAllBrinquedosAdmin, createBrinquedo } from '@/lib/db/queries/brinquedos'
+import { getAllBrinquedosAdmin, createBrinquedo, getBrinquedosAtivos } from '@/lib/db/queries/brinquedos'
 import { brinquedoSchema } from '@/lib/validations/toy'
+import { slugify } from '@/lib/utils'
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  
+  const { searchParams } = new URL(request.url)
+  const isLight = searchParams.get('light') === 'true'
+  
+  if (isLight) {
+    const brinquedos = await getBrinquedosAtivos()
+    return NextResponse.json(brinquedos)
+  }
+  
   const brinquedos = await getAllBrinquedosAdmin()
   return NextResponse.json(brinquedos)
 }
@@ -16,6 +26,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json()
+    body.slug = slugify(body.slug || body.nome || '')
     const data = brinquedoSchema.parse(body)
     const brinquedo = await createBrinquedo(data)
     return NextResponse.json(brinquedo, { status: 201 })
