@@ -214,6 +214,26 @@ export const configuracoes = pgTable('configuracoes', {
 })
 
 // ============================================
+// analytics_events — rastreamento de páginas (first-party)
+// ============================================
+export const analyticsEvents = pgTable('analytics_events', {
+  id:        uuid('id').primaryKey().defaultRandom(),
+  tipo:      text('tipo').notNull(),          // pageview | click | search | outbound | scroll
+  path:      text('path').notNull(),          // ex: /glossario/cama-elastica
+  referrer:  text('referrer'),                // de onde veio
+  rotulo:    text('rotulo'),                   // texto do clique / termo buscado / href de saída
+  sessionId: text('session_id'),               // anônimo, por sessão
+  device:    text('device'),                   // mobile | tablet | desktop
+  pais:      text('pais'),                      // país (se disponível via header)
+  meta:      jsonb('meta'),                     // dados extras flexíveis
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => ({
+  tipoIdx: index('analytics_tipo_idx').on(t.tipo),
+  pathIdx: index('analytics_path_idx').on(t.path),
+  dataIdx: index('analytics_created_idx').on(t.createdAt),
+}))
+
+// ============================================
 // clientes
 // ============================================
 export const clientes = pgTable('clientes', {

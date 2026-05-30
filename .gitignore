@@ -13,6 +13,9 @@
 # testing
 /coverage
 
+# agent tooling (local)
+/.agent/
+
 # next.js
 /.next/
 /out/
