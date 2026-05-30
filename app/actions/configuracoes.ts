@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { setConfig } from '@/lib/db/queries/configuracoes'
 import { GKEYS, desconectarGoogle } from '@/lib/google/oauth'
+import { submeterSitemapGoogle, enviarIndexNow, getBaseUrl } from '@/lib/seo/notificar'
 
 export async function saveConfigs(entries: Record<string, string>) {
   await Promise.all(
@@ -38,4 +39,15 @@ export async function salvarConfigGoogle(entries: { gscSite?: string; ga4Propert
 export async function desconectarContaGoogle() {
   await desconectarGoogle()
   revalidatePath('/admin/analytics')
+}
+
+/** Reenvia o sitemap ao Google e dispara o IndexNow para as páginas principais. */
+export async function reenviarSitemapAgora(): Promise<{ google: boolean; indexnow: boolean }> {
+  const base = await getBaseUrl()
+  const urls = [base, `${base}/brinquedos`, `${base}/glossario`]
+  const [g, i] = await Promise.all([
+    submeterSitemapGoogle(base),
+    enviarIndexNow(urls, base),
+  ])
+  return { google: g.ok, indexnow: i.ok }
 }

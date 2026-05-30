@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth/config'
 import { getBrinquedoById, updateBrinquedo, deleteBrinquedo } from '@/lib/db/queries/brinquedos'
 import { brinquedoSchema } from '@/lib/validations/toy'
 import { slugify } from '@/lib/utils'
+import { notificarBuscadores } from '@/lib/seo/notificar'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
@@ -25,6 +26,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
     const data = brinquedoSchema.partial().parse(body)
     const updated = await updateBrinquedo(id, data)
+
+    // Notifica buscadores se o brinquedo está ativo (público)
+    if (updated?.ativo && updated?.slug) {
+      await notificarBuscadores([`/brinquedos/${updated.slug}`, '/brinquedos'])
+    }
+
     return NextResponse.json(updated)
   } catch (error) {
     console.error('[PATCH /api/admin/brinquedos/id]', error)

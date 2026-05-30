@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/config'
 import { getConfig } from '@/lib/db/queries/configuracoes'
 import { getTermoById, updateTermo } from '@/lib/db/queries/glossario'
+import { notificarBuscadores } from '@/lib/seo/notificar'
 
 const PROVIDER_BASES: Record<string, string> = {
   openai:       'https://api.openai.com/v1',
@@ -164,6 +165,12 @@ Retorne APENAS um objeto JSON válido (sem formatação markdown, sem comentári
       seoDescription: seoDescription ? seoDescription.trim() : `Saiba o que significa ${termo.termo} e tudo relacionado no Glossário da Twix Eventos em São José dos Campos.`,
       status: 'publicado',
     })
+
+    // Notifica buscadores (Google sitemap + IndexNow) — não bloqueia em caso de falha
+    const slug = updated?.slug ?? termo.slug
+    if (slug) {
+      await notificarBuscadores([`/glossario/${slug}`])
+    }
 
     return NextResponse.json({
       success: true,

@@ -3,10 +3,10 @@
 import { useState, useTransition } from 'react'
 import {
   Search as SearchIcon, BarChart3, LineChart, Link2, Unlink, Settings2,
-  CheckCircle2, AlertCircle, Loader2, MousePointerClick, Eye, ArrowUpRight,
+  CheckCircle2, AlertCircle, Loader2, MousePointerClick, Eye, ArrowUpRight, RefreshCw,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { salvarConfigGoogle, desconectarContaGoogle } from '@/app/actions/configuracoes'
+import { salvarConfigGoogle, desconectarContaGoogle, reenviarSitemapAgora } from '@/app/actions/configuracoes'
 import type { GoogleStatus, GscResumo, Ga4Resumo } from '@/lib/google/data'
 
 interface Props {
@@ -23,6 +23,7 @@ export function GoogleInsights({ status, gsc, ga4 }: Props) {
   const [ga4Property, setGa4Property] = useState(status.ga4Property ?? '')
   const [salvando, startSalvar] = useTransition()
   const [desconectando, startDesconectar] = useTransition()
+  const [reenviando, startReenviar] = useTransition()
 
   const salvar = () => {
     startSalvar(async () => {
@@ -31,6 +32,17 @@ export function GoogleInsights({ status, gsc, ga4 }: Props) {
         toast.success('Configurações do Google salvas.')
       } catch {
         toast.error('Falha ao salvar.')
+      }
+    })
+  }
+
+  const reenviarSitemap = () => {
+    startReenviar(async () => {
+      try {
+        const r = await reenviarSitemapAgora()
+        toast.success(`Sitemap reenviado — Google: ${r.google ? 'ok' : 'falhou'}, IndexNow: ${r.indexnow ? 'ok' : 'falhou'}.`)
+      } catch {
+        toast.error('Falha ao reenviar o sitemap.')
       }
     })
   }
@@ -113,14 +125,24 @@ export function GoogleInsights({ status, gsc, ga4 }: Props) {
             </p>
           </div>
         </div>
-        <button
-          onClick={desconectar}
-          disabled={desconectando}
-          className="inline-flex items-center gap-2 text-brand-muted hover:text-red-500 font-bold text-sm px-3 py-2 rounded-xl transition-colors disabled:opacity-60"
-        >
-          {desconectando ? <Loader2 className="size-4 animate-spin" /> : <Unlink className="size-4" />}
-          Desconectar
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={reenviarSitemap}
+            disabled={reenviando}
+            className="inline-flex items-center gap-2 bg-brand-surface-2 border border-brand-border hover:border-brand-accent text-brand-text font-bold text-sm px-3 py-2 rounded-xl transition-colors disabled:opacity-60"
+          >
+            {reenviando ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+            Reenviar sitemap
+          </button>
+          <button
+            onClick={desconectar}
+            disabled={desconectando}
+            className="inline-flex items-center gap-2 text-brand-muted hover:text-red-500 font-bold text-sm px-3 py-2 rounded-xl transition-colors disabled:opacity-60"
+          >
+            {desconectando ? <Loader2 className="size-4 animate-spin" /> : <Unlink className="size-4" />}
+            Desconectar
+          </button>
+        </div>
       </div>
 
       {/* Configurações de site/propriedade */}

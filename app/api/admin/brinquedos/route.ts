@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth/config'
 import { getAllBrinquedosAdmin, createBrinquedo, getBrinquedosAtivos } from '@/lib/db/queries/brinquedos'
 import { brinquedoSchema } from '@/lib/validations/toy'
 import { slugify } from '@/lib/utils'
+import { notificarBuscadores } from '@/lib/seo/notificar'
 
 export async function GET(request: Request) {
   const session = await auth()
@@ -29,6 +30,12 @@ export async function POST(request: Request) {
     body.slug = slugify(body.slug || body.nome || '')
     const data = brinquedoSchema.parse(body)
     const brinquedo = await createBrinquedo(data)
+
+    // Notifica buscadores se o brinquedo já está ativo (público)
+    if (brinquedo?.ativo && brinquedo?.slug) {
+      await notificarBuscadores([`/brinquedos/${brinquedo.slug}`, '/brinquedos'])
+    }
+
     return NextResponse.json(brinquedo, { status: 201 })
   } catch (err: unknown) {
     console.error('[POST /api/admin/brinquedos]', err)
