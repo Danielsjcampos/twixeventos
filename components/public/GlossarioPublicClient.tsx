@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Search, BookOpen, ArrowRight, CornerDownRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -28,6 +28,16 @@ const ALFABETO = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
 export function GlossarioPublicClient({ termos }: Props) {
   const [busca, setBusca] = useState('')
   const [letraAtiva, setLetraAtiva] = useState<string | null>(null)
+
+  // Rastreia palavras-chave buscadas no site (debounce, via tracker global)
+  useEffect(() => {
+    const termo = busca.trim()
+    if (termo.length < 3) return
+    const id = setTimeout(() => {
+      ;(window as any).twixTrack?.('search', termo.toLowerCase())
+    }, 1200)
+    return () => clearTimeout(id)
+  }, [busca])
 
   // Filtrar termos publicados
   const termosPublicados = termos.filter(t => t.status === 'publicado')

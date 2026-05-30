@@ -3,10 +3,12 @@
 import { useState, useTransition } from 'react'
 import {
   BookOpen, Plus, Search, Bot, Sparkles, RefreshCw, Trash2, Check,
-  Loader2, CheckCircle2, XCircle, AlertCircle, ExternalLink, HelpCircle
+  Loader2, CheckCircle2, XCircle, AlertCircle, ExternalLink, HelpCircle,
+  Volume2, Megaphone, Settings2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { setFlags } from '@/app/actions/configuracoes'
 
 // Interfaces
 interface Termo {
@@ -25,12 +27,31 @@ interface Termo {
 
 interface Props {
   initialTermos: Termo[]
+  leituraAtiva: boolean
+  adsAtivo: boolean
 }
 
 const ALFABETO = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
 
-export function GlossarioClient({ initialTermos }: Props) {
+export function GlossarioClient({ initialTermos, leituraAtiva, adsAtivo }: Props) {
   const [termos, setTermos] = useState<Termo[]>(initialTermos)
+  const [flagLeitura, setFlagLeitura] = useState(leituraAtiva)
+  const [flagAds, setFlagAds] = useState(adsAtivo)
+  const [savingFlag, setSavingFlag] = useState<string | null>(null)
+
+  const toggleFlag = async (chave: string, valor: boolean, setLocal: (v: boolean) => void) => {
+    setLocal(valor)
+    setSavingFlag(chave)
+    try {
+      await setFlags({ [chave]: String(valor) })
+      toast.success(valor ? 'Recurso ativado.' : 'Recurso desativado.')
+    } catch {
+      setLocal(!valor)
+      toast.error('Falha ao salvar a configuração.')
+    } finally {
+      setSavingFlag(null)
+    }
+  }
   const [nicho, setNicho] = useState('Aluguel de brinquedos infláveis, festas infantis e eventos')
   const [letrasSugerir, setLetrasSugerir] = useState<string[]>(['A'])
   const [prefixo, setPrefixo] = useState('O que é')
@@ -389,6 +410,32 @@ export function GlossarioClient({ initialTermos }: Props) {
           <span className="flex items-center justify-center size-10 rounded-lg bg-amber-500/10 text-amber-500">
             <Loader2 className="size-5 animate-spin-slow" />
           </span>
+        </div>
+      </div>
+
+      {/* Configurações do Glossário (liga/desliga) */}
+      <div className="rounded-xl border border-brand-border bg-brand-surface p-5 shadow-sm">
+        <h3 className="text-sm font-bold text-brand-text flex items-center gap-2 mb-4">
+          <Settings2 className="size-4 text-brand-accent" />
+          Configurações do Glossário
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FlagToggle
+            icon={Volume2}
+            titulo="Modo de leitura ditada"
+            descricao="Mostra o botão “Ouvir este verbete” nas páginas do glossário (voz do navegador)."
+            ativo={flagLeitura}
+            salvando={savingFlag === 'glossario_leitura_ativo'}
+            onToggle={() => toggleFlag('glossario_leitura_ativo', !flagLeitura, setFlagLeitura)}
+          />
+          <FlagToggle
+            icon={Megaphone}
+            titulo="Anúncios / CTAs no conteúdo"
+            descricao="Insere um bloco de propaganda com links para orçamento e brinquedos dentro dos verbetes."
+            ativo={flagAds}
+            salvando={savingFlag === 'glossario_ads_ativo'}
+            onToggle={() => toggleFlag('glossario_ads_ativo', !flagAds, setFlagAds)}
+          />
         </div>
       </div>
 
@@ -928,6 +975,61 @@ export function GlossarioClient({ initialTermos }: Props) {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// Linha de configuração com interruptor liga/desliga
+function FlagToggle({
+  icon: Icon,
+  titulo,
+  descricao,
+  ativo,
+  salvando,
+  onToggle,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  titulo: string
+  descricao: string
+  ativo: boolean
+  salvando: boolean
+  onToggle: () => void
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-lg border border-brand-border bg-brand-bg/40 p-4">
+      <div className="flex items-start gap-3">
+        <span className={cn(
+          'flex items-center justify-center size-9 rounded-lg shrink-0 transition-colors',
+          ativo ? 'bg-brand-accent/10 text-brand-accent' : 'bg-brand-surface-2 text-brand-muted'
+        )}>
+          <Icon className="size-4" />
+        </span>
+        <div>
+          <h4 className="text-sm font-bold text-brand-text">{titulo}</h4>
+          <p className="text-xs text-brand-muted leading-relaxed mt-0.5">{descricao}</p>
+        </div>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={ativo}
+        aria-label={titulo}
+        disabled={salvando}
+        onClick={onToggle}
+        className={cn(
+          'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-60',
+          ativo ? 'bg-brand-accent' : 'bg-brand-border'
+        )}
+      >
+        {salvando ? (
+          <Loader2 className="size-3.5 animate-spin text-white absolute left-1/2 -translate-x-1/2" />
+        ) : (
+          <span className={cn(
+            'inline-block size-4 transform rounded-full bg-white shadow transition-transform',
+            ativo ? 'translate-x-6' : 'translate-x-1'
+          )} />
+        )}
+      </button>
     </div>
   )
 }

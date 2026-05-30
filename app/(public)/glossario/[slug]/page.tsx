@@ -2,6 +2,9 @@ import { Header } from '@/components/public/Header'
 import { Footer } from '@/components/public/Footer'
 import { WhatsAppButton } from '@/components/public/WhatsAppButton'
 import { getTermoBySlugPublicado, getTermosByLetraPublicados } from '@/lib/db/queries/glossario'
+import { getConfig } from '@/lib/db/queries/configuracoes'
+import { GlossarioReader } from '@/components/public/GlossarioReader'
+import { GlossarioCta, dividirConteudo } from '@/components/public/GlossarioCta'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronRight, ArrowLeft, BookOpen, Star, Sparkles } from 'lucide-react'
@@ -37,6 +40,18 @@ export default async function VerbetePage({ params }: Props) {
   const relacionados = todosMesmaLetra
     .filter(t => t.id !== termo.id)
     .slice(0, 5)
+
+  // Flags de funcionalidade do glossário (liga/desliga no admin)
+  const [leituraFlag, adsFlag] = await Promise.all([
+    getConfig('glossario_leitura_ativo'),
+    getConfig('glossario_ads_ativo'),
+  ])
+  const leituraAtiva = leituraFlag !== 'false'
+  const adsAtivo = adsFlag !== 'false'
+
+  // Conteúdo: com anúncio injetado no meio (se ativo)
+  const conteudo = termo.conteudo ?? ''
+  const [parteInicial, parteFinal] = adsAtivo ? dividirConteudo(conteudo) : [conteudo, '']
 
   return (
     <>
@@ -79,15 +94,35 @@ export default async function VerbetePage({ params }: Props) {
                 <p className="text-xs text-brand-muted font-medium">
                   Publicado no Dicionário Twix Eventos | Otimização local para SJC e região
                 </p>
+
+                {/* Modo de leitura ditada (TTS no navegador) */}
+                {leituraAtiva && conteudo && (
+                  <div className="pt-2">
+                    <GlossarioReader titulo={termo.termo} conteudoHtml={conteudo} />
+                  </div>
+                )}
               </header>
 
-              {/* Conteúdo HTML Gerado */}
-              <div 
-                className="text-brand-text text-sm leading-relaxed space-y-4 
+              {/* Conteúdo HTML Gerado (com anúncio injetado no meio, se ativo) */}
+              {parteFinal ? (
+                <div className="glossario-conteudo text-brand-text text-sm leading-relaxed space-y-4
                   [&_h2]:text-lg [&_h2]:font-black [&_h2]:text-brand-text [&_h2]:mt-8 [&_h2]:mb-3 [&_h2]:border-l-4 [&_h2]:border-brand-accent [&_h2]:pl-3
-                  [&_p]:text-brand-muted [&_p]:leading-relaxed [&_p]:mb-4"
-                dangerouslySetInnerHTML={{ __html: termo.conteudo ?? '' }}
-              />
+                  [&_p]:text-brand-muted [&_p]:leading-relaxed [&_p]:mb-4">
+                  <div dangerouslySetInnerHTML={{ __html: parteInicial }} />
+                  <GlossarioCta termo={termo.termo} />
+                  <div dangerouslySetInnerHTML={{ __html: parteFinal }} />
+                </div>
+              ) : (
+                <>
+                  <div
+                    className="glossario-conteudo text-brand-text text-sm leading-relaxed space-y-4
+                      [&_h2]:text-lg [&_h2]:font-black [&_h2]:text-brand-text [&_h2]:mt-8 [&_h2]:mb-3 [&_h2]:border-l-4 [&_h2]:border-brand-accent [&_h2]:pl-3
+                      [&_p]:text-brand-muted [&_p]:leading-relaxed [&_p]:mb-4"
+                    dangerouslySetInnerHTML={{ __html: parteInicial }}
+                  />
+                  {adsAtivo && conteudo && <GlossarioCta termo={termo.termo} />}
+                </>
+              )}
             </article>
 
             {/* Sidebar Otimização / Internos (Direita) */}
