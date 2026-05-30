@@ -7,7 +7,7 @@ import {
   ExternalLink, RefreshCw, CheckCircle2, XCircle, Gift,
   Plus, Trash2, GripVertical,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, extractYouTubeId } from '@/lib/utils'
 import { saveConfigs } from '@/app/actions/configuracoes'
 import { SingleImageUpload } from '@/components/admin/SingleImageUpload'
 import { HeroSlidesEditor } from '@/components/admin/HeroSlidesEditor'
@@ -1118,11 +1118,5 @@ export function ConfiguracoesClient({ initialConfigs }: { initialConfigs: Config
 
 /* ── util ── */
 function extractYTId(url: string): string {
-  if (!url) return ''
-  const short = url.match(/youtu\.be\/([^?&]+)/)
-  if (short) return short[1]
-  const long = url.match(/(?:v=|\/embed\/)([^?&/]+)/)
-  if (long) return long[1]
-  if (/^[A-Za-z0-9_-]{11}$/.test(url.trim())) return url.trim()
-  return ''
+  return extractYouTubeId(url) ?? ''
 }

@@ -5,7 +5,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
-import { slugify, CATEGORIAS } from '@/lib/utils'
+import { slugify, CATEGORIAS, extractYouTubeId } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { ImageUpload } from './ImageUpload'
 import { Plus, X, Sparkles, Loader2, Tag, ChevronDown, Video } from 'lucide-react'
@@ -627,9 +627,8 @@ function toEmbedUrl(url: string): string | null {
   try {
     const u = new URL(url)
     // YouTube
-    const ytId = u.searchParams.get('v') ?? u.pathname.split('/').pop()
     if (u.hostname.includes('youtube.com') || u.hostname.includes('youtu.be')) {
-      const id = u.hostname.includes('youtu.be') ? u.pathname.slice(1) : ytId
+      const id = extractYouTubeId(url)
       return id ? `https://www.youtube.com/embed/${id}` : null
     }
     // Vimeo
@@ -640,6 +639,8 @@ function toEmbedUrl(url: string): string | null {
     // URL direta (mp4, etc.) — devolve como está
     return url
   } catch {
+    const id = extractYouTubeId(url)
+    if (id) return `https://www.youtube.com/embed/${id}`
     return null
   }
 }

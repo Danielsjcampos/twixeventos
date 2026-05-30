@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Plus, Check, ShoppingCart, X, Play } from 'lucide-react'
-import { whatsappLink, WHATSAPP_NUMBER, cn } from '@/lib/utils'
+import { whatsappLink, WHATSAPP_NUMBER, cn, extractYouTubeId } from '@/lib/utils'
 import { useCart } from '@/lib/store/cart'
 
 interface Brinquedo {
@@ -246,9 +246,7 @@ function toEmbedUrl(url: string): { src: string; type: 'iframe' | 'video' } | nu
   try {
     const u = new URL(url)
     if (u.hostname.includes('youtube.com') || u.hostname.includes('youtu.be')) {
-      const id = u.hostname.includes('youtu.be')
-        ? u.pathname.slice(1)
-        : u.searchParams.get('v')
+      const id = extractYouTubeId(url)
       return id ? { src: `https://www.youtube.com/embed/${id}?rel=0`, type: 'iframe' } : null
     }
     if (u.hostname.includes('vimeo.com')) {
@@ -257,6 +255,8 @@ function toEmbedUrl(url: string): { src: string; type: 'iframe' | 'video' } | nu
     }
     return { src: url, type: 'video' }
   } catch {
+    const id = extractYouTubeId(url)
+    if (id) return { src: `https://www.youtube.com/embed/${id}?rel=0`, type: 'iframe' }
     return null
   }
 }

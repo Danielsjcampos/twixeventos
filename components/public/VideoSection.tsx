@@ -2,19 +2,7 @@
 
 import { Play } from 'lucide-react'
 import { useState } from 'react'
-
-function extractYouTubeId(url: string): string | null {
-  if (!url) return null
-  // youtu.be/ID
-  const short = url.match(/youtu\.be\/([^?&]+)/)
-  if (short) return short[1]
-  // youtube.com/watch?v=ID or /embed/ID
-  const long = url.match(/(?:v=|\/embed\/)([^?&/]+)/)
-  if (long) return long[1]
-  // bare ID (11 chars)
-  if (/^[A-Za-z0-9_-]{11}$/.test(url.trim())) return url.trim()
-  return null
-}
+import { extractYouTubeId } from '@/lib/utils'
 
 interface VideoSectionProps {
   videoUrl: string | null

@@ -1,4 +1,4 @@
-export const CURRENT_VERSION = '1.7.1'
+export const CURRENT_VERSION = '1.7.2'
 
 export type ChangeType = 'feature' | 'fix' | 'improvement' | 'security'
 
@@ -15,6 +15,15 @@ export interface Version {
 }
 
 export const CHANGELOG: Version[] = [
+  {
+    version: '1.7.2',
+    date: '2026-05-30',
+    title: 'YouTube Shorts Support in Toy Catalog',
+    changes: [
+      { type: 'fix', text: 'Suporte a vídeos de formato YouTube Shorts no catálogo de brinquedos (página de detalhes, preview administrativo e apresentação).' },
+      { type: 'improvement', text: 'Centralização da lógica de extração de IDs do YouTube com utilitário robusto compartilhado em utils.ts.' },
+    ],
+  },
   {
     version: '1.7.1',
     date: '2026-05-29',

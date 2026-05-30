@@ -55,3 +55,60 @@ export const STATUS_KANBAN = [
   { id: 'realizado',          label: 'Realizado',          cor: '#059669' },
   { id: 'perdido',            label: 'Perdido',            cor: '#6B7280' },
 ]
+
+export function extractYouTubeId(url: string | null | undefined): string | null {
+  if (!url) return null
+  const cleaned = url.trim()
+
+  // 1. Check if it's already just an 11-character video ID
+  if (/^[A-Za-z0-9_-]{11}$/.test(cleaned)) {
+    return cleaned
+  }
+
+  // 2. Parse different YouTube URL formats
+  try {
+    const parsed = new URL(cleaned)
+    const hostname = parsed.hostname.toLowerCase()
+
+    if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) {
+      // 2a. YouTube Shorts (e.g., youtube.com/shorts/ID)
+      const shortsMatch = parsed.pathname.match(/\/shorts\/([^?&/]+)/)
+      if (shortsMatch) return shortsMatch[1]
+
+      // 2b. YouTube Embed (e.g., youtube.com/embed/ID)
+      const embedMatch = parsed.pathname.match(/\/embed\/([^?&/]+)/)
+      if (embedMatch) return embedMatch[1]
+
+      // 2c. Shortened youtu.be link (e.g., youtu.be/ID)
+      if (hostname.includes('youtu.be')) {
+        const id = parsed.pathname.slice(1).split('/')[0]
+        if (id) return id
+      }
+
+      // 2d. Standard watch link (e.g., youtube.com/watch?v=ID)
+      const v = parsed.searchParams.get('v')
+      if (v) return v
+    }
+  } catch {
+    // If URL parsing fails, fallback to direct regex matching
+  }
+
+  // 3. Fallback regexes for robustness
+  // Shorts pattern: /shorts/ID
+  const shortsRegex = /\/shorts\/([A-Za-z0-9_-]{11})/i
+  const sMatch = cleaned.match(shortsRegex)
+  if (sMatch) return sMatch[1]
+
+  // youtu.be/ID pattern
+  const shortRegex = /youtu\.be\/([A-Za-z0-9_-]{11})/i
+  const shMatch = cleaned.match(shortRegex)
+  if (shMatch) return shMatch[1]
+
+  // watch?v=ID or /embed/ID pattern
+  const longRegex = /(?:v=|\/embed\/)([A-Za-z0-9_-]{11})/i
+  const lMatch = cleaned.match(longRegex)
+  if (lMatch) return lMatch[1]
+
+  return null
+}
+
