@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import {
   Search as SearchIcon, BarChart3, LineChart, Link2, Unlink, Settings2,
   CheckCircle2, AlertCircle, Loader2, MousePointerClick, Eye, ArrowUpRight, RefreshCw,
+  Copy, Check, ExternalLink, ChevronDown,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { salvarConfigGoogle, desconectarContaGoogle, reenviarSitemapAgora } from '@/app/actions/configuracoes'
@@ -69,19 +70,12 @@ export function GoogleInsights({ status, gsc, ga4 }: Props) {
         </h2>
         <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 text-sm">
           <AlertCircle className="size-5 text-amber-500 shrink-0 mt-0.5" />
-          <div className="space-y-2 text-brand-muted">
+          <div className="space-y-1 text-brand-muted">
             <p className="font-semibold text-brand-text">Credenciais do Google ainda não configuradas.</p>
-            <p>Para ativar, crie um OAuth Client no Google Cloud Console e adicione no ambiente (Vercel):</p>
-            <ul className="list-disc list-inside space-y-1 font-mono text-xs">
-              <li>GOOGLE_CLIENT_ID</li>
-              <li>GOOGLE_CLIENT_SECRET</li>
-            </ul>
-            <p className="text-xs">
-              APIs a habilitar: <b>Google Search Console API</b> e <b>Google Analytics Data API</b>.
-              Redirect autorizado: <span className="font-mono">…/api/admin/google/callback</span>.
-            </p>
+            <p className="text-xs">Siga o passo a passo abaixo (você faz isso só uma vez). Depois é só clicar em “Conectar com Google” e fica conectado para sempre.</p>
           </div>
         </div>
+        <GuiaConexao iniciaAberto />
       </section>
     )
   }
@@ -104,6 +98,7 @@ export function GoogleInsights({ status, gsc, ga4 }: Props) {
           <Link2 className="size-4" />
           Conectar com Google
         </a>
+        <GuiaConexao />
       </section>
     )
   }
@@ -179,6 +174,7 @@ export function GoogleInsights({ status, gsc, ga4 }: Props) {
           {salvando ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
           Salvar fontes
         </button>
+        <GuiaConexao />
       </div>
 
       {/* Search Console */}
@@ -290,5 +286,154 @@ function RankTabela({ titulo, linhas }: { titulo: string; linhas: { nome: string
         </ul>
       )}
     </div>
+  )
+}
+
+// Botão de copiar texto para a área de transferência
+function CopyButton({ texto }: { texto: string }) {
+  const [copiado, setCopiado] = useState(false)
+  const copiar = async () => {
+    try {
+      await navigator.clipboard.writeText(texto)
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 1500)
+    } catch {
+      /* clipboard indisponível */
+    }
+  }
+  return (
+    <button
+      type="button"
+      onClick={copiar}
+      aria-label="Copiar"
+      className="inline-flex items-center justify-center size-7 shrink-0 rounded-md border border-brand-border bg-brand-surface text-brand-muted hover:text-brand-accent hover:border-brand-accent transition-colors"
+    >
+      {copiado ? <Check className="size-3.5 text-green-500" /> : <Copy className="size-3.5" />}
+    </button>
+  )
+}
+
+// Linha com valor monoespaçado + botão copiar
+function CampoCopiavel({ valor }: { valor: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <code className="flex-1 truncate rounded-md bg-brand-bg border border-brand-border px-2.5 py-1.5 text-xs font-mono text-brand-text">
+        {valor}
+      </code>
+      <CopyButton texto={valor} />
+    </div>
+  )
+}
+
+/**
+ * Passo a passo, embutido no painel, para criar as credenciais OAuth do Google
+ * (Search Console + Analytics) e conectar. Feito uma única vez.
+ */
+function GuiaConexao({ iniciaAberto = false }: { iniciaAberto?: boolean }) {
+  const [aberto, setAberto] = useState(iniciaAberto)
+  const [origin, setOrigin] = useState('https://twixeventos.vercel.app')
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') setOrigin(window.location.origin)
+  }, [])
+
+  const callbackProd = `${origin}/api/admin/google/callback`
+  const callbackLocal = 'http://localhost:3000/api/admin/google/callback'
+
+  return (
+    <div className="rounded-xl border border-brand-border bg-brand-bg/40 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setAberto(v => !v)}
+        className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left"
+      >
+        <span className="text-sm font-bold text-brand-text flex items-center gap-2">
+          <Settings2 className="size-4 text-brand-accent" />
+          Passo a passo para conectar (uma única vez)
+        </span>
+        <ChevronDown className={`size-4 text-brand-muted transition-transform ${aberto ? 'rotate-180' : ''}`} />
+      </button>
+
+      {aberto && (
+        <div className="px-4 pb-5 pt-1 space-y-5 border-t border-brand-border">
+          <Passo n={1} titulo="Criar/escolher o projeto no Google Cloud">
+            <p>Abra o Google Cloud Console e crie um projeto (ex.: “Twix Eventos”).</p>
+            <LinkExterno href="https://console.cloud.google.com/projectcreate">Abrir Google Cloud Console</LinkExterno>
+          </Passo>
+
+          <Passo n={2} titulo="Habilitar as 2 APIs necessárias">
+            <p>Em “APIs e serviços → Biblioteca”, habilite:</p>
+            <ul className="list-disc list-inside space-y-0.5">
+              <li><b>Google Search Console API</b></li>
+              <li><b>Google Analytics Data API</b></li>
+            </ul>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <LinkExterno href="https://console.cloud.google.com/apis/library/searchconsole.googleapis.com">Search Console API</LinkExterno>
+              <LinkExterno href="https://console.cloud.google.com/apis/library/analyticsdata.googleapis.com">Analytics Data API</LinkExterno>
+            </div>
+          </Passo>
+
+          <Passo n={3} titulo="Tela de consentimento OAuth">
+            <p>“APIs e serviços → Tela de consentimento OAuth”. Tipo <b>Externo</b>. Pode deixar em modo <b>Teste</b>. Em “Usuários de teste”, adicione o seu e-mail do Google (o mesmo que tem acesso ao Search Console e Analytics).</p>
+            <LinkExterno href="https://console.cloud.google.com/apis/credentials/consent">Abrir tela de consentimento</LinkExterno>
+          </Passo>
+
+          <Passo n={4} titulo="Criar o ID do cliente OAuth (Aplicativo da Web)">
+            <p>“Credenciais → Criar credenciais → ID do cliente OAuth” → tipo <b>Aplicativo da Web</b>. Em “URIs de redirecionamento autorizados”, adicione os dois abaixo:</p>
+            <div className="space-y-2 pt-1">
+              <CampoCopiavel valor={callbackProd} />
+              <CampoCopiavel valor={callbackLocal} />
+            </div>
+            <p className="text-[11px]">Ao salvar, copie o <b>Client ID</b> e o <b>Client Secret</b>.</p>
+            <LinkExterno href="https://console.cloud.google.com/apis/credentials">Abrir Credenciais</LinkExterno>
+          </Passo>
+
+          <Passo n={5} titulo="Colar as credenciais na Vercel (Environment Variables)">
+            <p>No seu projeto na Vercel: Settings → Environment Variables. Adicione (Production e Preview):</p>
+            <div className="space-y-2 pt-1">
+              <CampoCopiavel valor="GOOGLE_CLIENT_ID" />
+              <CampoCopiavel valor="GOOGLE_CLIENT_SECRET" />
+            </div>
+            <p className="text-[11px]">Depois faça um <b>Redeploy</b> para carregar as variáveis.</p>
+          </Passo>
+
+          <Passo n={6} titulo="Conectar e configurar as fontes">
+            <p>Volte aqui, clique em <b>“Conectar com Google”</b> e autorize. Depois preencha o <b>site do Search Console</b> e o <b>ID da propriedade GA4</b> (só números) e salve. Pronto — fica conectado para sempre.</p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <LinkExterno href="https://search.google.com/search-console">Search Console</LinkExterno>
+              <LinkExterno href="https://analytics.google.com">Google Analytics (GA4)</LinkExterno>
+            </div>
+          </Passo>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Passo({ n, titulo, children }: { n: number; titulo: string; children: React.ReactNode }) {
+  return (
+    <div className="flex gap-3">
+      <span className="flex items-center justify-center size-6 shrink-0 rounded-full bg-brand-accent text-white text-xs font-black">
+        {n}
+      </span>
+      <div className="space-y-1.5 text-xs text-brand-muted leading-relaxed">
+        <h4 className="text-sm font-bold text-brand-text">{titulo}</h4>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function LinkExterno({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-accent hover:underline"
+    >
+      {children}
+      <ExternalLink className="size-3" />
+    </a>
   )
 }
