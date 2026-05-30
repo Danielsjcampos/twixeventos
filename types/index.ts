@@ -19,6 +19,7 @@ export type Brinquedo = {
   seoTitle?: string | null
   seoDescription?: string | null
   seoKeywords?: string | null
+  videoUrl?: string | null
   createdAt: Date
   updatedAt: Date
 }

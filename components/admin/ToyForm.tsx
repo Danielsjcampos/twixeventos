@@ -8,7 +8,7 @@ import { toast } from 'sonner'
 import { slugify, CATEGORIAS } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { ImageUpload } from './ImageUpload'
-import { Plus, X, Sparkles, Loader2, Tag, ChevronDown } from 'lucide-react'
+import { Plus, X, Sparkles, Loader2, Tag, ChevronDown, Video } from 'lucide-react'
 import type { Brinquedo } from '@/types'
 
 interface Props {
@@ -34,6 +34,7 @@ const schema = z.object({
   seoTitle: z.string().optional().nullable(),
   seoDescription: z.string().optional().nullable(),
   seoKeywords: z.string().optional().nullable(),
+  videoUrl: z.string().optional().nullable(),
 })
 
 type FormData = z.infer<typeof schema>
@@ -265,6 +266,7 @@ export function ToyForm({ brinquedo, onSuccess }: Props) {
       seoTitle: brinquedo?.seoTitle ?? '',
       seoDescription: brinquedo?.seoDescription ?? '',
       seoKeywords: brinquedo?.seoKeywords ?? '',
+      videoUrl: brinquedo?.videoUrl ?? '',
     },
   })
 
@@ -317,6 +319,7 @@ export function ToyForm({ brinquedo, onSuccess }: Props) {
       seoTitle: data.seoTitle?.trim() || null,
       seoDescription: data.seoDescription?.trim() || null,
       seoKeywords: data.seoKeywords?.trim() || null,
+      videoUrl: data.videoUrl?.trim() || null,
     }
 
     try {
@@ -443,6 +446,27 @@ export function ToyForm({ brinquedo, onSuccess }: Props) {
             className={`${field} resize-none`}
           />
         </Field>
+      </Section>
+
+      {/* Seção: Vídeo */}
+      <Section title="Vídeo">
+        <Field
+          label="URL do vídeo"
+          hint="YouTube, Vimeo ou link direto"
+          error={errors.videoUrl?.message}
+        >
+          <div className="relative">
+            <Video className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-brand-muted pointer-events-none" />
+            <input
+              {...register('videoUrl')}
+              placeholder="https://www.youtube.com/watch?v=..."
+              className={`${field} pl-9`}
+            />
+          </div>
+        </Field>
+        {watch('videoUrl') && (
+          <VideoPreview url={watch('videoUrl') ?? ''} />
+        )}
       </Section>
 
       {/* Seção: SEO */}
@@ -592,6 +616,51 @@ export function ToyForm({ brinquedo, onSuccess }: Props) {
         </Button>
       </div>
     </form>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Helpers de vídeo
+// ---------------------------------------------------------------------------
+function toEmbedUrl(url: string): string | null {
+  if (!url) return null
+  try {
+    const u = new URL(url)
+    // YouTube
+    const ytId = u.searchParams.get('v') ?? u.pathname.split('/').pop()
+    if (u.hostname.includes('youtube.com') || u.hostname.includes('youtu.be')) {
+      const id = u.hostname.includes('youtu.be') ? u.pathname.slice(1) : ytId
+      return id ? `https://www.youtube.com/embed/${id}` : null
+    }
+    // Vimeo
+    if (u.hostname.includes('vimeo.com')) {
+      const id = u.pathname.split('/').filter(Boolean).pop()
+      return id ? `https://player.vimeo.com/video/${id}` : null
+    }
+    // URL direta (mp4, etc.) — devolve como está
+    return url
+  } catch {
+    return null
+  }
+}
+
+function VideoPreview({ url }: { url: string }) {
+  const embed = toEmbedUrl(url)
+  if (!embed) return null
+  const isIframe = embed.includes('youtube.com/embed') || embed.includes('vimeo.com')
+  return (
+    <div className="rounded-xl overflow-hidden border border-brand-border aspect-video w-full">
+      {isIframe ? (
+        <iframe
+          src={embed}
+          className="w-full h-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+      ) : (
+        <video src={embed} controls className="w-full h-full object-cover" />
+      )}
+    </div>
   )
 }
 

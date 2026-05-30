@@ -24,6 +24,7 @@ const publicListCols = {
   seoTitle:             brinquedos.seoTitle,
   seoDescription:       brinquedos.seoDescription,
   seoKeywords:          brinquedos.seoKeywords,
+  videoUrl:             brinquedos.videoUrl,
   createdAt:            brinquedos.createdAt,
   updatedAt:            brinquedos.updatedAt,
 }

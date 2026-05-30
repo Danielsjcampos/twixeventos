@@ -20,6 +20,7 @@ export const brinquedoSchema = z.object({
   seoTitle:        z.string().optional().nullable(),
   seoDescription:  z.string().optional().nullable(),
   seoKeywords:     z.string().optional().nullable(),
+  videoUrl:        z.string().url('URL inválida').optional().nullable().or(z.literal('')),
 })
 
 export type BrinquedoInput = z.infer<typeof brinquedoSchema>

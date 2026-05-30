@@ -31,6 +31,8 @@ export const brinquedos = pgTable('brinquedos', {
   seoTitle:        text('seo_title'),
   seoDescription:  text('seo_description'),
   seoKeywords:     text('seo_keywords'),
+  // Vídeo
+  videoUrl:        text('video_url'),
   createdAt:       timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt:       timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [

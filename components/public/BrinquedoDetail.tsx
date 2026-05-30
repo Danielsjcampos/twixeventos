@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Plus, Check, ShoppingCart, X } from 'lucide-react'
+import { Plus, Check, ShoppingCart, X, Play } from 'lucide-react'
 import { whatsappLink, WHATSAPP_NUMBER, cn } from '@/lib/utils'
 import { useCart } from '@/lib/store/cart'
 
@@ -20,6 +20,7 @@ interface Brinquedo {
   fotos: string[] | null
   fotoDestaque: string | null
   destaque: boolean
+  videoUrl?: string | null
 }
 
 export function BrinquedoDetail({ brinquedo }: { brinquedo: Brinquedo }) {
@@ -114,6 +115,11 @@ export function BrinquedoDetail({ brinquedo }: { brinquedo: Brinquedo }) {
                 </button>
               ))}
             </div>
+          )}
+
+          {/* Vídeo */}
+          {brinquedo.videoUrl && (
+            <BrinquedoVideo url={brinquedo.videoUrl} nome={brinquedo.nome} />
           )}
         </div>
 
@@ -230,6 +236,59 @@ export function BrinquedoDetail({ brinquedo }: { brinquedo: Brinquedo }) {
         </div>
       )}
     </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Vídeo embed helper
+// ---------------------------------------------------------------------------
+function toEmbedUrl(url: string): { src: string; type: 'iframe' | 'video' } | null {
+  try {
+    const u = new URL(url)
+    if (u.hostname.includes('youtube.com') || u.hostname.includes('youtu.be')) {
+      const id = u.hostname.includes('youtu.be')
+        ? u.pathname.slice(1)
+        : u.searchParams.get('v')
+      return id ? { src: `https://www.youtube.com/embed/${id}?rel=0`, type: 'iframe' } : null
+    }
+    if (u.hostname.includes('vimeo.com')) {
+      const id = u.pathname.split('/').filter(Boolean).pop()
+      return id ? { src: `https://player.vimeo.com/video/${id}`, type: 'iframe' } : null
+    }
+    return { src: url, type: 'video' }
+  } catch {
+    return null
+  }
+}
+
+function BrinquedoVideo({ url, nome }: { url: string; nome: string }) {
+  const embed = toEmbedUrl(url)
+  if (!embed) return null
+  return (
+    <div className="rounded-2xl overflow-hidden border border-brand-border bg-brand-surface-2">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-brand-border">
+        <Play className="size-4 text-brand-accent fill-brand-accent" />
+        <span className="text-brand-text text-sm font-semibold">Vídeo do brinquedo</span>
+      </div>
+      <div className="aspect-video">
+        {embed.type === 'iframe' ? (
+          <iframe
+            src={embed.src}
+            title={`Vídeo – ${nome}`}
+            className="w-full h-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        ) : (
+          <video
+            src={embed.src}
+            controls
+            className="w-full h-full object-cover"
+            title={`Vídeo – ${nome}`}
+          />
+        )}
+      </div>
+    </div>
   )
 }
 
