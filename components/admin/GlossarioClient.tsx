@@ -32,7 +32,7 @@ const ALFABETO = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
 export function GlossarioClient({ initialTermos }: Props) {
   const [termos, setTermos] = useState<Termo[]>(initialTermos)
   const [nicho, setNicho] = useState('Aluguel de brinquedos infláveis, festas infantis e eventos')
-  const [letraSugerir, setLetraSugerir] = useState('A')
+  const [letrasSugerir, setLetrasSugerir] = useState<string[]>(['A'])
   const [prefixo, setPrefixo] = useState('O que é')
   const [promptExtra, setPromptExtra] = useState('')
   const [novoTermoManual, setNovoTermoManual] = useState('')
@@ -58,6 +58,8 @@ export function GlossarioClient({ initialTermos }: Props) {
   const [bulkTotal, setBulkTotal] = useState(0)
   const [bulkCurrent, setBulkCurrent] = useState(0)
   const [bulkTermoAtual, setBulkTermoAtual] = useState('')
+  const [bulkLabel, setBulkLabel] = useState('Geração em Lote Ativa')
+  const [bulkUnit, setBulkUnit] = useState('verbetes')
 
   const [pending, startTransition] = useTransition()
 
@@ -74,37 +76,80 @@ export function GlossarioClient({ initialTermos }: Props) {
     }
   }
 
-  // Sugerir termos via IA
+  // Alternar seleção de letra (multi-seleção)
+  const toggleLetra = (l: string) =>
+    setLetrasSugerir(prev => prev.includes(l) ? prev.filter(x => x !== l) : [...prev, l])
+
+  const selecionarTodasLetras = () => setLetrasSugerir([...ALFABETO])
+  const limparLetras = () => setLetrasSugerir([])
+
+  // Sugerir termos via IA — automatizado para uma ou várias letras (fila sequencial)
   const handleSugerirTermos = async () => {
     if (!nicho.trim()) {
       toast.error('Informe o nicho de mercado para contextualizar a IA.')
       return
     }
+    if (letrasSugerir.length === 0) {
+      toast.error('Selecione ao menos uma letra para gerar os títulos.')
+      return
+    }
+
+    const letras = [...letrasSugerir].sort()
 
     setLoadingSugerir(true)
-    const promise = fetch('/api/admin/glossario/gerar-termos', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nicho, letra: letraSugerir, promptExtra, prefixo })
-    }).then(async (res) => {
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Erro desconhecido')
-      return data
-    })
+    setBulkLabel('Gerando Títulos por Letra')
+    setBulkUnit('letras')
+    setIsGeneratingBulk(true)
+    setBulkTotal(letras.length)
+    setBulkCurrent(0)
 
-    toast.promise(promise, {
-      loading: `IA sugerindo termos com a letra "${letraSugerir}"...`,
-      success: (data) => {
-        setLoadingSugerir(false)
-        refreshList()
-        setPromptExtra('')
-        return `Sucesso! IA sugeriu ${data.totalSugeridos} termos (sendo ${data.totalInseridos} novos adicionados).`
-      },
-      error: (err) => {
-        setLoadingSugerir(false)
-        return `Erro: ${err.message}`
+    let totalInseridos = 0
+    let totalSugeridos = 0
+    const falhas: string[] = []
+
+    // Processar uma letra por vez sequencialmente para evitar timeouts e rate-limits
+    for (let i = 0; i < letras.length; i++) {
+      const letra = letras[i]
+      setBulkCurrent(i + 1)
+      setBulkTermoAtual(`Letra ${letra}`)
+
+      try {
+        const res = await fetch('/api/admin/glossario/gerar-termos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nicho, letra, promptExtra, prefixo })
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          falhas.push(letra)
+          console.error(`Erro ao gerar títulos para a letra "${letra}":`, data.error)
+        } else {
+          totalSugeridos += data.totalSugeridos ?? 0
+          totalInseridos += data.totalInseridos ?? 0
+        }
+      } catch (err) {
+        falhas.push(letra)
+        console.error(`Erro de conexão ao gerar títulos para a letra "${letra}":`, err)
       }
-    })
+    }
+
+    setIsGeneratingBulk(false)
+    setLoadingSugerir(false)
+    setPromptExtra('')
+    await refreshList()
+
+    if (totalInseridos > 0 || totalSugeridos > 0) {
+      toast.success(
+        `Concluído! ${totalInseridos} novos títulos adicionados (${totalSugeridos} sugeridos) em ${letras.length} letra(s).` +
+        (falhas.length > 0 ? ` Falhas: ${falhas.join(', ')}.` : '')
+      )
+    } else {
+      toast.error(
+        falhas.length > 0
+          ? `Falha ao gerar títulos nas letras: ${falhas.join(', ')}.`
+          : 'Nenhum título novo foi adicionado (possíveis duplicatas).'
+      )
+    }
   }
 
   // Adicionar termo manualmente
@@ -232,6 +277,8 @@ export function GlossarioClient({ initialTermos }: Props) {
       return
     }
 
+    setBulkLabel('Escrevendo Definições com IA')
+    setBulkUnit('verbetes')
     setIsGeneratingBulk(true)
     setBulkTotal(pendentes.length)
     setBulkCurrent(0)
@@ -355,7 +402,7 @@ export function GlossarioClient({ initialTermos }: Props) {
                 <Loader2 className="size-6 animate-spin" />
               </span>
               <div>
-                <h4 className="font-bold text-brand-text text-base">Geração em Lote Ativa</h4>
+                <h4 className="font-bold text-brand-text text-base">{bulkLabel}</h4>
                 <p className="text-brand-muted text-xs mt-0.5">
                   Processando <span className="text-brand-text font-semibold">"{bulkTermoAtual}"</span>
                 </p>
@@ -363,7 +410,7 @@ export function GlossarioClient({ initialTermos }: Props) {
             </div>
             <div className="flex flex-col md:items-end gap-1 shrink-0">
               <span className="font-mono text-sm font-bold text-brand-text">
-                {bulkCurrent} de {bulkTotal} verbetes ({Math.round((bulkCurrent / bulkTotal) * 100)}%)
+                {bulkCurrent} de {bulkTotal} {bulkUnit} ({Math.round((bulkCurrent / bulkTotal) * 100)}%)
               </span>
               <div className="w-48 bg-brand-surface-2 border border-brand-border h-2 rounded-full overflow-hidden mt-1">
                 <div className="bg-brand-accent h-full rounded-full transition-all duration-300" style={{ width: `${(bulkCurrent / bulkTotal) * 100}%` }} />
@@ -384,7 +431,7 @@ export function GlossarioClient({ initialTermos }: Props) {
               Gerador Ninja via IA
             </h3>
             <p className="text-xs text-brand-muted">
-              Sugira até 30 novos verbetes da letra escolhida baseados no seu nicho e salve-os de uma vez.
+              Selecione uma, várias ou todas as letras e a IA gera automaticamente os títulos de cada uma em fila, salvando tudo no banco.
             </p>
 
             <div className="space-y-3 pt-2">
@@ -416,24 +463,54 @@ export function GlossarioClient({ initialTermos }: Props) {
               </div>
 
               <div className="space-y-1">
-                <label className="block text-xs font-semibold text-brand-muted uppercase">Letra da Sugestão ({letraSugerir})</label>
-                <div className="grid grid-cols-7 gap-1">
-                  {ALFABETO.map(l => (
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-brand-muted uppercase">
+                    Letras ({letrasSugerir.length} selec.)
+                  </label>
+                  <div className="flex items-center gap-2">
                     <button
-                      key={l}
                       type="button"
-                      onClick={() => setLetraSugerir(l)}
-                      className={cn(
-                        'h-8 text-xs font-bold rounded-md border transition-all duration-150',
-                        letraSugerir === l
-                          ? 'bg-brand-accent border-brand-accent text-white font-black scale-105 shadow-sm'
-                          : 'border-brand-border text-brand-muted hover:border-brand-accent/50 hover:text-brand-text'
-                      )}
+                      onClick={selecionarTodasLetras}
+                      disabled={loadingSugerir || isGeneratingBulk}
+                      className="text-[10px] font-bold uppercase text-brand-accent hover:underline disabled:opacity-50"
                     >
-                      {l}
+                      Todas
                     </button>
-                  ))}
+                    <span className="text-brand-border">·</span>
+                    <button
+                      type="button"
+                      onClick={limparLetras}
+                      disabled={loadingSugerir || isGeneratingBulk}
+                      className="text-[10px] font-bold uppercase text-brand-muted hover:text-brand-text disabled:opacity-50"
+                    >
+                      Limpar
+                    </button>
+                  </div>
                 </div>
+                <div className="grid grid-cols-7 gap-1">
+                  {ALFABETO.map(l => {
+                    const ativa = letrasSugerir.includes(l)
+                    return (
+                      <button
+                        key={l}
+                        type="button"
+                        onClick={() => toggleLetra(l)}
+                        disabled={loadingSugerir || isGeneratingBulk}
+                        className={cn(
+                          'h-8 text-xs font-bold rounded-md border transition-all duration-150 disabled:opacity-50',
+                          ativa
+                            ? 'bg-brand-accent border-brand-accent text-white font-black shadow-sm'
+                            : 'border-brand-border text-brand-muted hover:border-brand-accent/50 hover:text-brand-text'
+                        )}
+                      >
+                        {l}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="text-[10px] text-brand-muted pt-1">
+                  Selecione várias letras (ou todas) para automatizar a criação dos títulos em fila.
+                </p>
               </div>
 
               <div className="space-y-1">
@@ -458,7 +535,11 @@ export function GlossarioClient({ initialTermos }: Props) {
                 ) : (
                   <Sparkles className="size-4" />
                 )}
-                {loadingSugerir ? 'IA Gerando Termos...' : 'Sugerir Novos Verbetes'}
+                {loadingSugerir
+                  ? `IA Gerando Títulos${bulkTotal > 1 ? ` (${bulkCurrent}/${bulkTotal})` : ''}...`
+                  : letrasSugerir.length > 1
+                    ? `Gerar Títulos (${letrasSugerir.length} letras)`
+                    : 'Sugerir Novos Verbetes'}
               </button>
             </div>
           </div>
