@@ -5,6 +5,8 @@ import {
 } from '@/lib/db/queries/analytics'
 import { getConfig } from '@/lib/db/queries/configuracoes'
 import { AnalyticsClient } from '@/components/admin/AnalyticsClient'
+import { GoogleInsights } from '@/components/admin/GoogleInsights'
+import { getGoogleStatus, getSearchConsoleResumo, getAnalyticsResumo } from '@/lib/google/data'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = { title: 'Analytics — Rastreamento' }
@@ -23,17 +25,26 @@ async function AnalyticsContent() {
     getConfig('tracking_ativo'),
   ])
 
+  // Integração Google (Search Console + GA4) — carrega dados se conectado
+  const googleStatus = await getGoogleStatus()
+  const [gsc, ga4] = googleStatus.conectado
+    ? await Promise.all([getSearchConsoleResumo(28), getAnalyticsResumo(28)])
+    : [null, null]
+
   return (
-    <AnalyticsClient
-      resumo={resumo}
-      porDia={porDia}
-      paginas={paginas}
-      cliques={cliques}
-      buscas={buscas}
-      dispositivos={dispositivos}
-      referrers={referrers}
-      trackingAtivo={trackingAtivo !== 'false'}
-    />
+    <div className="space-y-6">
+      <AnalyticsClient
+        resumo={resumo}
+        porDia={porDia}
+        paginas={paginas}
+        cliques={cliques}
+        buscas={buscas}
+        dispositivos={dispositivos}
+        referrers={referrers}
+        trackingAtivo={trackingAtivo !== 'false'}
+      />
+      <GoogleInsights status={googleStatus} gsc={gsc} ga4={ga4} />
+    </div>
   )
 }
 
