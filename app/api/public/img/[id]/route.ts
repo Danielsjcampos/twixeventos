@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { brinquedos } from '@/lib/db/schema'
 import { eq, sql } from 'drizzle-orm'
+import { readFile } from 'fs/promises'
+import path from 'path'
+
+export const runtime = 'nodejs'
 
 // Placeholder SVG returned when no image exists
 const PLACEHOLDER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
@@ -11,12 +15,33 @@ const PLACEHOLDER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="400" hei
   <circle cx="185" cy="135" r="7" fill="#475569"/>
 </svg>`
 
+const CACHE = 'public, max-age=86400, stale-while-revalidate=604800'
+
+function placeholder() {
+  return new Response(PLACEHOLDER_SVG, {
+    headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=60' },
+  })
+}
+
+function mimeFromExt(p: string): string {
+  const ext = p.split('.').pop()?.toLowerCase()
+  switch (ext) {
+    case 'webp': return 'image/webp'
+    case 'png':  return 'image/png'
+    case 'jpg':
+    case 'jpeg': return 'image/jpeg'
+    case 'gif':  return 'image/gif'
+    case 'svg':  return 'image/svg+xml'
+    case 'avif': return 'image/avif'
+    default:     return 'image/webp'
+  }
+}
+
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
 
   try {
-    // Fetch ONLY one image element (not the whole fotos[] array) to keep
-    // Neon egress minimal: fotoDestaque, falling back to the first foto.
+    // Busca só 1 imagem (egress mínimo): fotoDestaque ou a 1ª de fotos[]
     const [row] = await db
       .select({
         img: sql<string | null>`coalesce(${brinquedos.fotoDestaque}, ${brinquedos.fotos}[1])`,
@@ -25,36 +50,41 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       .where(eq(brinquedos.id, id))
       .limit(1)
 
-    const dataUrl = row?.img ?? null
+    const value = row?.img ?? null
+    if (!value) return placeholder()
 
-    if (!dataUrl || !dataUrl.startsWith('data:')) {
-      // Return SVG placeholder
-      return new Response(PLACEHOLDER_SVG, {
-        headers: {
-          'Content-Type': 'image/svg+xml',
-          'Cache-Control': 'public, max-age=60',
-        },
+    // 1) Imagens antigas: data URL base64 (armazenadas no banco)
+    if (value.startsWith('data:')) {
+      const commaIdx = value.indexOf(',')
+      const header = value.slice(0, commaIdx)
+      const base64 = value.slice(commaIdx + 1)
+      const mime = header.match(/data:([^;]+)/)?.[1] ?? 'image/webp'
+      return new Response(Buffer.from(base64, 'base64'), {
+        headers: { 'Content-Type': mime, 'Cache-Control': CACHE, 'X-Content-Type-Options': 'nosniff' },
       })
     }
 
-    // Parse "data:image/webp;base64,<data>"
-    const commaIdx = dataUrl.indexOf(',')
-    const header = dataUrl.slice(0, commaIdx)
-    const base64 = dataUrl.slice(commaIdx + 1)
-    const mimeMatch = header.match(/data:([^;]+)/)
-    const mime = mimeMatch?.[1] ?? 'image/webp'
-    const buffer = Buffer.from(base64, 'base64')
+    // 2) Imagens novas (self-hosted): arquivo na pasta public/uploads
+    if (value.startsWith('/uploads/')) {
+      const safe = path.normalize(value).replace(/^(\.\.[/\\])+/, '')
+      const filePath = path.join(process.cwd(), 'public', safe)
+      try {
+        const buf = await readFile(filePath)
+        return new Response(new Uint8Array(buf), {
+          headers: { 'Content-Type': mimeFromExt(safe), 'Cache-Control': CACHE, 'X-Content-Type-Options': 'nosniff' },
+        })
+      } catch {
+        return placeholder()
+      }
+    }
 
-    return new Response(buffer, {
-      headers: {
-        'Content-Type': mime,
-        'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
-        'X-Content-Type-Options': 'nosniff',
-      },
-    })
+    // 3) URLs externas (ex.: Vercel Blob legado) → redireciona
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return NextResponse.redirect(value, 307)
+    }
+
+    return placeholder()
   } catch {
-    return new Response(PLACEHOLDER_SVG, {
-      headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=60' },
-    })
+    return placeholder()
   }
 }
