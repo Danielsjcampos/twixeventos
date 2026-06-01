@@ -11,7 +11,8 @@ import * as schema from './schema'
 const connectionString =
   process.env.DATABASE_URL ?? 'postgres://build:build@localhost:5432/build'
 
-const client = postgres(connectionString)
+// prepare:false → compatível com pooler/pgbouncer do Neon (transaction mode)
+const client = postgres(connectionString, { prepare: false })
 const rawDb = drizzle(client, { schema })
 
 // Compatibilidade: garante que db.execute(...) retorne um Array e exponha .rows,
