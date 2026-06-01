@@ -6,6 +6,9 @@ import { adminUsers } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 
 export const authConfig: NextAuthConfig = {
+  // Self-hosted atrás de proxy (Traefik): confia no Host encaminhado.
+  // Sem isso, o NextAuth v5 retorna UntrustedHost ("problem with the server configuration").
+  trustHost: true,
   providers: [
     Credentials({
       credentials: {
