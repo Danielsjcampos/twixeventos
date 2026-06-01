@@ -14,3 +14,7 @@ public/uploads/
 tests/
 playwright.config.ts
 *.local
+# pacote de migração (não faz parte do build da app)
+_migration/
+portainer-stack.yml
+PORTAINER.md

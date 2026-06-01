@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next'
 import { getConfig } from '@/lib/db/queries/configuracoes'
 
-export const revalidate = 3600
+export const dynamic = 'force-dynamic' // gerado em runtime (self-hosted: sem DB no build)
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
   const [siteUrl, indexar] = await Promise.all([

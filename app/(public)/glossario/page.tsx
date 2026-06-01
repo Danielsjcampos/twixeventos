@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description: 'Dicionário completo e explicativo sobre termos de festas infantis, aluguel de brinquedos infláveis e eventos em São José dos Campos e Vale do Paraíba.',
 }
 
-export const revalidate = 3600
+export const dynamic = 'force-dynamic'
 
 export default async function GlossarioPage() {
   const termos = await getTermosPublicados()

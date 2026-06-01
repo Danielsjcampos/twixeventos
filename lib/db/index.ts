@@ -1,35 +1,33 @@
-import { neon } from '@neondatabase/serverless'
-import { drizzle } from 'drizzle-orm/neon-http'
+import postgres from 'postgres'
+import { drizzle } from 'drizzle-orm/postgres-js'
 import * as schema from './schema'
 
-const client = neon(process.env.DATABASE_URL!)
+// VERSÃO PORTAINER / SELF-HOSTED
+// Conecta a um PostgreSQL padrão via TCP (postgres-js), em vez do driver
+// serverless da Neon (neon-http), que só fala com o endpoint HTTP da Neon.
+//
+// postgres-js é "lazy": só abre conexão na primeira query. Por isso o build
+// (next build, sem DATABASE_URL) não quebra ao apenas importar este módulo.
+const connectionString =
+  process.env.DATABASE_URL ?? 'postgres://build:build@localhost:5432/build'
+
+const client = postgres(connectionString)
 const rawDb = drizzle(client, { schema })
 
-// Proxy db.execute para retornar as linhas diretamente como um Array (compatível com postgres-js)
-// evitando erros de tipagem e quebras em consultas diretas por toda a aplicação
+// Compatibilidade: garante que db.execute(...) retorne um Array e exponha .rows,
+// mantendo o comportamento esperado em toda a aplicação.
 const originalExecute = rawDb.execute.bind(rawDb)
 rawDb.execute = (async (query: any) => {
-  const result = await originalExecute(query)
-  if (result && typeof result === 'object' && 'rows' in result && Array.isArray(result.rows)) {
-    const rows = result.rows
-    Object.defineProperties(rows, {
-      rows: { value: rows, enumerable: false },
-      fields: { value: (result as any).fields, enumerable: false },
-      command: { value: (result as any).command, enumerable: false },
-      rowCount: { value: (result as any).rowCount, enumerable: false },
-    })
-    return rows as any
+  const result: any = await originalExecute(query)
+  const rows = Array.isArray(result) ? result : (result?.rows ?? result)
+  if (Array.isArray(rows) && !('rows' in rows)) {
+    Object.defineProperty(rows, 'rows', { value: rows, enumerable: false })
   }
-  return result
+  return rows
 }) as any
 
 export const db = rawDb as unknown as Omit<typeof rawDb, 'execute'> & {
-  execute: <T = any>(query: any) => Promise<T[] & {
-    rows: T[]
-    fields: any[]
-    command: string
-    rowCount: number
-  }>
+  execute: <T = any>(query: any) => Promise<T[] & { rows: T[] }>
 }
 
 export type DB = typeof db

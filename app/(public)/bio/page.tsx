@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description: 'Brinquedos infláveis e eletrônicos para festas em São José dos Campos. Reserve via WhatsApp!',
 }
 
-export const revalidate = 300
+export const dynamic = 'force-dynamic'
 
 const links = [
   { label: '📦 Ver Catálogo Completo',        href: '/brinquedos' },

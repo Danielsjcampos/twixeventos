@@ -4,7 +4,7 @@ import { brinquedos, glossarioTermos } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { getConfig } from '@/lib/db/queries/configuracoes'
 
-export const revalidate = 3600 // regenera a cada 1 hora
+export const dynamic = 'force-dynamic' // gerado em runtime (self-hosted: sem DB no build)
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [siteUrl, frequencia, prioridade, includeBlog] = await Promise.all([
