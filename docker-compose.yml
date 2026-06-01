@@ -13,6 +13,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - twix_pgdata:/var/lib/postgresql/data
+      # Cria o schema automaticamente no PRIMEIRO start (banco vazio)
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-twix} -d ${POSTGRES_DB:-twixeventos}"]
       interval: 10s
@@ -29,7 +31,7 @@ services:
   # Aplicação Next.js
   # ─────────────────────────────────────────
   app:
-    image: ghcr.io/danielsjcampos/twixeventos:latest
+    image: ghcr.io/danielsjcampos/twixeventos:portainer
     environment:
       DATABASE_URL:                postgresql://${POSTGRES_USER:-twix}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-twixeventos}
       NEXTAUTH_URL:                ${NEXTAUTH_URL}
@@ -37,11 +39,20 @@ services:
       AUTH_SECRET:                 ${AUTH_SECRET}
       RESEND_API_KEY:              ${RESEND_API_KEY}
       NEXT_PUBLIC_WHATSAPP_NUMBER: ${NEXT_PUBLIC_WHATSAPP_NUMBER}
+      NEXT_PUBLIC_SITE_URL:        ${NEXT_PUBLIC_SITE_URL}
       CRON_SECRET:                 ${CRON_SECRET}
+      # Google (opcional — Search Console + GA4)
+      GOOGLE_CLIENT_ID:            ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET:        ${GOOGLE_CLIENT_SECRET:-}
+      GSC_SITE_URL:                ${GSC_SITE_URL:-}
+      GA4_PROPERTY_ID:             ${GA4_PROPERTY_ID:-}
     volumes:
       - twix_uploads:/app/public/uploads
     ports:
       - "${APP_PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
     networks:
       - twix_net
     deploy:

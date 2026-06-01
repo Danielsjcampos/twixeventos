@@ -24,6 +24,19 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+
+  // Economia de tráfego: imagens enviadas (nome único/uuid) são imutáveis →
+  // cache de 1 ano no browser/CDN, evitando re-downloads.
+  async headers() {
+    return [
+      {
+        source: '/uploads/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+    ]
+  },
 }
 
 export default nextConfig
