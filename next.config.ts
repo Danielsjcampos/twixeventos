@@ -1,6 +1,9 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+  // Build self-hosted (Docker/Portainer): gera .next/standalone com server.js
+  output: 'standalone',
+
   // sharp usa binários nativos — não pode ser bundled pelo webpack no Vercel
   serverExternalPackages: ['sharp'],
 
