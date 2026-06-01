@@ -1,0 +1,80 @@
+version: "3.7"
+
+# ============================================================
+# TwixEventos — Stack Docker Swarm + Traefik (Let's Encrypt)
+# Mesmo padrão do seu n8n: rede externa "hidro", sem portas publicadas,
+# roteamento por labels do Traefik.
+#
+# TESTE: web.twixeventos.com  →  depois trocar para twixeventos.com
+#
+# Segredos NÃO ficam neste arquivo — preencha na aba
+# "Environment variables" da Stack no Portainer (ver PORTAINER.md).
+# ============================================================
+
+services:
+
+  twixeventos_web:
+    image: ghcr.io/danielsjcampos/twixeventos:portainer
+
+    networks:
+      - hidro
+
+    environment:
+      # Banco: reutiliza o Postgres existente (host "postgres" na rede hidro),
+      # em um database próprio "twixeventos" (criar uma vez — ver PORTAINER.md).
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@postgres:5432/twixeventos
+
+      # URLs (TESTE no subdomínio)
+      - NEXT_PUBLIC_SITE_URL=https://web.twixeventos.com
+      - NEXTAUTH_URL=https://web.twixeventos.com
+
+      # Auth / segredos
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - AUTH_SECRET=${AUTH_SECRET}
+      - CRON_SECRET=${CRON_SECRET}
+
+      # Integrações
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - NEXT_PUBLIC_WHATSAPP_NUMBER=${NEXT_PUBLIC_WHATSAPP_NUMBER}
+
+      # Google (opcional — Search Console + GA4)
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GSC_SITE_URL=${GSC_SITE_URL:-}
+      - GA4_PROPERTY_ID=${GA4_PROPERTY_ID:-}
+
+      - NODE_ENV=production
+      - TZ=America/Sao_Paulo
+
+    volumes:
+      # Imagens enviadas (WebP) — persistem aqui (não no banco)
+      - twixeventos_uploads:/app/public/uploads
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.twixeventos_web.rule=Host(`web.twixeventos.com`)
+        - traefik.http.routers.twixeventos_web.entrypoints=websecure
+        - traefik.http.routers.twixeventos_web.priority=10
+        - traefik.http.routers.twixeventos_web.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.twixeventos_web.service=twixeventos_web
+        - traefik.http.services.twixeventos_web.loadbalancer.server.port=3000
+        - traefik.http.services.twixeventos_web.loadbalancer.passHostHeader=1
+
+volumes:
+  twixeventos_uploads:
+    name: twixeventos_uploads
+
+networks:
+  hidro:
+    external: true
+    name: hidro
