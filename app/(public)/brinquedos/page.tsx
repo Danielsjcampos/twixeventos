@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache'
 import { getBrinquedosAtivos } from '@/lib/db/queries/brinquedos'
 import { ToyGrid } from '@/components/public/ToyGrid'
 import { Header } from '@/components/public/Header'
@@ -13,8 +14,15 @@ export const metadata: Metadata = {
 
 export const dynamic = 'force-dynamic'
 
+// Cache server-side do resultado do banco (TTFB baixo): revalida a cada 5 min.
+const getCatalogoCache = unstable_cache(
+  () => getBrinquedosAtivos(),
+  ['public-brinquedos-ativos'],
+  { revalidate: 300 },
+)
+
 export default async function BrinquedosPage() {
-  const brinquedos = await getBrinquedosAtivos()
+  const brinquedos = await getCatalogoCache()
 
   return (
     <>

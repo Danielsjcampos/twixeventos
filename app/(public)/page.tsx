@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache'
 import { getBrinquedosDestaque } from '@/lib/db/queries/brinquedos'
 import { getConfig } from '@/lib/db/queries/configuracoes'
 import { Header } from '@/components/public/Header'
@@ -50,12 +51,22 @@ function pickRandom<T>(arr: T[], n: number): T[] {
   return copy.slice(0, n)
 }
 
+// Cache server-side dos dados da home (TTFB baixo): revalida a cada 5 min.
+const getHomeDataCache = unstable_cache(
+  async () => {
+    const [allDestaques, videoUrl, heroSlidesRaw] = await Promise.all([
+      getBrinquedosDestaque(),
+      getConfig('video_apresentacao'),
+      getConfig('hero_slides'),
+    ])
+    return { allDestaques, videoUrl, heroSlidesRaw }
+  },
+  ['home-public-data'],
+  { revalidate: 300 },
+)
+
 export default async function HomePage() {
-  const [allDestaques, videoUrl, heroSlidesRaw] = await Promise.all([
-    getBrinquedosDestaque(),
-    getConfig('video_apresentacao'),
-    getConfig('hero_slides'),
-  ])
+  const { allDestaques, videoUrl, heroSlidesRaw } = await getHomeDataCache()
   const destaques = pickRandom(allDestaques, 4)
   const heroSlides = (() => { try { return JSON.parse(heroSlidesRaw ?? '[]') } catch { return [] } })()
 
@@ -80,7 +91,7 @@ export default async function HomePage() {
 
           <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-14">
-              <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/25 text-blue-400 text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-full mb-5">
+              <div className="inline-flex items-center gap-2 bg-blue-500/15 border border-blue-500/30 text-blue-200 text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-full mb-5">
                 Seleção especial
               </div>
               <h2 className="font-[family-name:var(--font-display)] text-4xl lg:text-5xl font-bold text-brand-text uppercase">

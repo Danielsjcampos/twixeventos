@@ -28,11 +28,11 @@ function InputField({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-brand-muted text-sm font-medium">{label}</label>
+    <label className="flex flex-col gap-1.5">
+      <span className="text-brand-muted text-sm font-medium">{label}</span>
       {children}
       {error && <span className="text-red-500 text-xs">{error}</span>}
-    </div>
+    </label>
   )
 }
 

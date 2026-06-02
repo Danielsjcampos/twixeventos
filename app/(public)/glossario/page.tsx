@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache'
 import { Header } from '@/components/public/Header'
 import { Footer } from '@/components/public/Footer'
 import { WhatsAppButton } from '@/components/public/WhatsAppButton'
@@ -12,8 +13,15 @@ export const metadata: Metadata = {
 
 export const dynamic = 'force-dynamic'
 
+// 777 termos: cache server-side por 10 min para não consultar o banco a cada request.
+const getTermosCache = unstable_cache(
+  () => getTermosPublicados(),
+  ['public-glossario-termos'],
+  { revalidate: 600 },
+)
+
 export default async function GlossarioPage() {
-  const termos = await getTermosPublicados()
+  const termos = await getTermosCache()
 
   return (
     <>

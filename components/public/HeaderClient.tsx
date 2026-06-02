@@ -145,7 +145,7 @@ export function HeaderClient({ logoUrl, bannerAtivo = 'true', bannerTexto = 'Des
               <UserCircle className="size-5" />
             </Link>
             <CartButton />
-            <Button size="icon" variant="ghost" onClick={() => setOpen(!open)} className="text-brand-text hover:bg-transparent">
+            <Button size="icon" variant="ghost" onClick={() => setOpen(!open)} aria-label={open ? 'Fechar menu' : 'Abrir menu'} aria-expanded={open} className="text-brand-text hover:bg-transparent">
               <MenuToggleIcon open={open} className="size-6" duration={300} />
             </Button>
           </div>
