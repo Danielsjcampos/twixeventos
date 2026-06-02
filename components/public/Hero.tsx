@@ -320,20 +320,26 @@ function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
           animation: slideOutToRight ${DURATION}ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
         }
 
-        /* ── Content entrance animations ── */
+        /* ── Content entrance animations ──
+           Importante p/ LCP: o texto NUNCA começa invisível (sem opacity:0/blur),
+           só um leve deslize via transform (composição, não atrasa a pintura).
+           Assim o <h1> (elemento LCP) é pintado no primeiro frame. */
         @keyframes heroItemUp {
-          from { opacity: 0; transform: translateY(28px); filter: blur(4px); }
-          to   { opacity: 1; transform: translateY(0);    filter: blur(0); }
+          from { transform: translateY(16px); }
+          to   { transform: translateY(0); }
         }
 
         .hero-slide-content .hero-item {
-          opacity: 0;
-          animation: heroItemUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+          animation: heroItemUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
         }
-        .hero-slide-content .hero-delay-1 { animation-delay: 0.15s; }
-        .hero-slide-content .hero-delay-2 { animation-delay: 0.30s; }
-        .hero-slide-content .hero-delay-3 { animation-delay: 0.45s; }
-        .hero-slide-content .hero-delay-4 { animation-delay: 0.60s; }
+        .hero-slide-content .hero-delay-1 { animation-delay: 0.05s; }
+        .hero-slide-content .hero-delay-2 { animation-delay: 0.10s; }
+        .hero-slide-content .hero-delay-3 { animation-delay: 0.15s; }
+        .hero-slide-content .hero-delay-4 { animation-delay: 0.20s; }
+
+        @media (prefers-reduced-motion: reduce) {
+          .hero-slide-content .hero-item { animation: none; }
+        }
       `}</style>
     </section>
   )
