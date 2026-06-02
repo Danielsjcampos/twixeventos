@@ -8,10 +8,11 @@ import { randomUUID } from 'crypto'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+export const maxDuration = 300
 
 // MIGRAÇÃO ÚNICA (self-hosted): move TODAS as imagens/arquivos base64 do banco
 // (Neon) para arquivos no volume do Portainer (public/uploads/...) e grava só o
-// caminho no banco. Reduz drasticamente o tamanho/egress do Neon.
+// caminho no banco. Processa UMA linha por vez para não estourar a memória.
 //
 //   curl -X POST -H "x-migrate-secret: SEU_CRON_SECRET" \
 //        https://web.twixeventos.com/api/admin/migrar-imagens
@@ -21,7 +22,7 @@ export const dynamic = 'force-dynamic'
 const UPLOADS_ROOT = path.join(process.cwd(), 'public', 'uploads')
 
 function extFromDataUrl(d: string): string {
-  const mime = d.slice(5, d.indexOf(';')).toLowerCase() // depois de "data:"
+  const mime = d.slice(5, d.indexOf(';')).toLowerCase()
   if (mime.includes('png')) return 'png'
   if (mime.includes('jpeg') || mime.includes('jpg')) return 'jpg'
   if (mime.includes('gif')) return 'gif'
@@ -54,42 +55,63 @@ export async function POST(request: Request) {
   }
 
   try {
-    // 1) brinquedos: fotoDestaque + fotos[]
-    for (const b of await db.select().from(brinquedos)) {
+    // 1) brinquedos — busca só os IDs, processa um por um (memória mínima)
+    const bIds = await db.select({ id: brinquedos.id }).from(brinquedos)
+    for (const { id } of bIds) {
+      const [b] = await db.select({
+        id: brinquedos.id, fotoDestaque: brinquedos.fotoDestaque, fotos: brinquedos.fotos,
+      }).from(brinquedos).where(eq(brinquedos.id, id)).limit(1)
+      if (!b) continue
+
       let changed = false
       let fotoDestaque = b.fotoDestaque
       if (isDataUrl(b.fotoDestaque)) { fotoDestaque = await salvar(b.fotoDestaque, 'brinquedos'); stats.arquivos++; changed = true }
       let fotos = b.fotos
       if (Array.isArray(b.fotos) && b.fotos.some(isDataUrl)) {
-        fotos = []
-        for (const f of b.fotos) { if (isDataUrl(f)) { fotos.push(await salvar(f, 'brinquedos')); stats.arquivos++ } else fotos.push(f) }
-        changed = true
+        const out: string[] = []
+        for (const f of b.fotos) { if (isDataUrl(f)) { out.push(await salvar(f, 'brinquedos')); stats.arquivos++ } else out.push(f) }
+        fotos = out; changed = true
       }
-      if (changed) { await db.update(brinquedos).set({ fotoDestaque, fotos }).where(eq(brinquedos.id, b.id)); stats.brinquedos++ }
+      if (changed) {
+        await db.update(brinquedos).set({ fotoDestaque, fotos }).where(eq(brinquedos.id, id))
+        stats.brinquedos++
+      }
     }
 
-    // 2) eventos: fotos_montagem[]
-    for (const e of await db.select().from(eventos)) {
-      if (Array.isArray(e.fotosMontagem) && e.fotosMontagem.some(isDataUrl)) {
+    // 2) eventos.fotos_montagem
+    const eIds = await db.select({ id: eventos.id }).from(eventos)
+    for (const { id } of eIds) {
+      const [e] = await db.select({ id: eventos.id, fotosMontagem: eventos.fotosMontagem })
+        .from(eventos).where(eq(eventos.id, id)).limit(1)
+      if (e && Array.isArray(e.fotosMontagem) && e.fotosMontagem.some(isDataUrl)) {
         const out: string[] = []
         for (const f of e.fotosMontagem) { if (isDataUrl(f)) { out.push(await salvar(f, 'eventos')); stats.arquivos++ } else out.push(f) }
-        await db.update(eventos).set({ fotosMontagem: out }).where(eq(eventos.id, e.id)); stats.eventos++
+        await db.update(eventos).set({ fotosMontagem: out }).where(eq(eventos.id, id))
+        stats.eventos++
       }
     }
 
-    // 3) pagamentos: comprovante
-    for (const p of await db.select().from(pagamentos)) {
-      if (isDataUrl(p.comprovante)) {
+    // 3) pagamentos.comprovante
+    const pIds = await db.select({ id: pagamentos.id }).from(pagamentos)
+    for (const { id } of pIds) {
+      const [p] = await db.select({ id: pagamentos.id, comprovante: pagamentos.comprovante })
+        .from(pagamentos).where(eq(pagamentos.id, id)).limit(1)
+      if (p && isDataUrl(p.comprovante)) {
         const novo = await salvar(p.comprovante, 'comprovantes'); stats.arquivos++
-        await db.update(pagamentos).set({ comprovante: novo }).where(eq(pagamentos.id, p.id)); stats.pagamentos++
+        await db.update(pagamentos).set({ comprovante: novo }).where(eq(pagamentos.id, id))
+        stats.pagamentos++
       }
     }
 
-    // 4) lancamentos_financeiros: comprovante
-    for (const l of await db.select().from(lancamentosFinanceiros)) {
-      if (isDataUrl(l.comprovante)) {
+    // 4) lancamentos_financeiros.comprovante
+    const lIds = await db.select({ id: lancamentosFinanceiros.id }).from(lancamentosFinanceiros)
+    for (const { id } of lIds) {
+      const [l] = await db.select({ id: lancamentosFinanceiros.id, comprovante: lancamentosFinanceiros.comprovante })
+        .from(lancamentosFinanceiros).where(eq(lancamentosFinanceiros.id, id)).limit(1)
+      if (l && isDataUrl(l.comprovante)) {
         const novo = await salvar(l.comprovante, 'comprovantes'); stats.arquivos++
-        await db.update(lancamentosFinanceiros).set({ comprovante: novo }).where(eq(lancamentosFinanceiros.id, l.id)); stats.lancamentos++
+        await db.update(lancamentosFinanceiros).set({ comprovante: novo }).where(eq(lancamentosFinanceiros.id, id))
+        stats.lancamentos++
       }
     }
 
