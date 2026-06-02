@@ -242,21 +242,22 @@ export function BrinquedoDetail({ brinquedo }: { brinquedo: Brinquedo }) {
 // ---------------------------------------------------------------------------
 // Vídeo embed helper
 // ---------------------------------------------------------------------------
-function toEmbedUrl(url: string): { src: string; type: 'iframe' | 'video' } | null {
+function toEmbedUrl(url: string): { src: string; type: 'iframe' | 'video'; vertical: boolean } | null {
+  const isShort = /\/shorts\//i.test(url)
   try {
     const u = new URL(url)
     if (u.hostname.includes('youtube.com') || u.hostname.includes('youtu.be')) {
       const id = extractYouTubeId(url)
-      return id ? { src: `https://www.youtube.com/embed/${id}?rel=0`, type: 'iframe' } : null
+      return id ? { src: `https://www.youtube.com/embed/${id}?rel=0`, type: 'iframe', vertical: isShort } : null
     }
     if (u.hostname.includes('vimeo.com')) {
       const id = u.pathname.split('/').filter(Boolean).pop()
-      return id ? { src: `https://player.vimeo.com/video/${id}`, type: 'iframe' } : null
+      return id ? { src: `https://player.vimeo.com/video/${id}`, type: 'iframe', vertical: false } : null
     }
-    return { src: url, type: 'video' }
+    return { src: url, type: 'video', vertical: false }
   } catch {
     const id = extractYouTubeId(url)
-    if (id) return { src: `https://www.youtube.com/embed/${id}?rel=0`, type: 'iframe' }
+    if (id) return { src: `https://www.youtube.com/embed/${id}?rel=0`, type: 'iframe', vertical: isShort }
     return null
   }
 }
@@ -270,7 +271,7 @@ function BrinquedoVideo({ url, nome }: { url: string; nome: string }) {
         <Play className="size-4 text-brand-accent fill-brand-accent" />
         <span className="text-brand-text text-sm font-semibold">Vídeo do brinquedo</span>
       </div>
-      <div className="aspect-video">
+      <div className={embed.vertical ? 'aspect-9/16 max-w-[340px] mx-auto bg-black' : 'aspect-video'}>
         {embed.type === 'iframe' ? (
           <iframe
             src={embed.src}
