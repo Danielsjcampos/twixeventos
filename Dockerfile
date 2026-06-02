@@ -42,6 +42,10 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Pasta de uploads gravável pelo usuário nextjs (volume vazio herda esta permissão)
+RUN mkdir -p /app/public/uploads/brinquedos /app/public/uploads/eventos /app/public/uploads/comprovantes \
+ && chown -R nextjs:nodejs /app/public/uploads
+
 USER nextjs
 
 EXPOSE 3000
