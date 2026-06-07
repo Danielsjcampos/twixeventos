@@ -11,6 +11,7 @@ import { CartButton } from '@/components/public/CartButton';
 
 const navLinks = [
   { href: '/brinquedos', label: 'Brinquedos' },
+  { href: '/blog', label: 'Blog' },
   { href: '/sobre', label: 'Sobre' },
   { href: '/#contato', label: 'Contato' },
 ];

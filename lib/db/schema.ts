@@ -423,3 +423,30 @@ export const glossarioTermos = pgTable('glossario_termos', {
   index('idx_glossario_slug').on(t.slug),
 ])
 
+// ============================================
+// blog_posts
+// ============================================
+export const blogPosts = pgTable('blog_posts', {
+  id:             uuid('id').primaryKey().defaultRandom(),
+  titulo:         text('titulo').notNull(),
+  slug:           text('slug').notNull().unique(),
+  conteudo:       text('conteudo').notNull(),
+  resumo:         text('resumo'),
+  fotoDestaque:   text('foto_destaque'),
+  categoria:      text('categoria').notNull(), // ex: Dicas, Festas, Brinquedos
+  tags:           text('tags').array().default([]),
+  status:         text('status').default('rascunho').notNull(), // rascunho | publicado
+  seoTitle:       text('seo_title'),
+  seoDescription: text('seo_description'),
+  seoKeywords:    text('seo_keywords'),
+  tempoLeitura:   integer('tempo_leitura').default(5).notNull(), // em minutos
+  visualizacoes:  integer('visualizacoes').default(0).notNull(),
+  createdAt:      timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:      timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('idx_blog_posts_status').on(t.status),
+  index('idx_blog_posts_slug').on(t.slug),
+  index('idx_blog_posts_categoria').on(t.categoria),
+])
+
+

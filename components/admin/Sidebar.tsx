@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import {
   LayoutDashboard, Users, Package, Calendar,
-  Settings, LogOut, UserCheck, DollarSign, UserCog, Contact, Coins, History, BookOpen, BarChart3
+  Settings, LogOut, UserCheck, DollarSign, UserCog, Contact, Coins, History, BookOpen, BarChart3, FileText
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CURRENT_VERSION } from '@/lib/changelog'
@@ -21,6 +21,7 @@ const NAV_ITEMS = [
   { href: '/admin/cashback',      label: 'Cashback',         icon: Coins },
   { href: '/admin/usuarios',      label: 'Usuários',         icon: UserCog },
   { href: '/admin/glossario',     label: 'Glossário SEO',    icon: BookOpen },
+  { href: '/admin/blog',          label: 'Blog SEO',         icon: FileText },
   { href: '/admin/analytics',     label: 'Analytics',        icon: BarChart3 },
   { href: '/admin/configuracoes', label: 'Configurações',    icon: Settings },
 ]

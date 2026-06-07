@@ -30,6 +30,9 @@ export const metadata: Metadata = {
     siteName: 'Twix Eventos',
     images: [{ url: 'https://twixeventos.com/wp-content/uploads/2025/01/tw.jpg' }],
   },
+  verification: {
+    google: 'sOErGYUnZRbuGblqxlqk0dHAOXatTtil_nWr6tzt9IE',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
