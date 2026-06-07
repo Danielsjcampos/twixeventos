@@ -4,7 +4,8 @@ import { useState, useTransition } from 'react'
 import {
   FileText, Plus, Search, Bot, Sparkles, RefreshCw, Trash2, Check,
   Loader2, CheckCircle2, XCircle, AlertCircle, ExternalLink, HelpCircle,
-  Eye, Calendar, Tag, Layers, ChevronRight, Edit3, Save, ArrowLeft, Image as ImageIcon, Dices, ListOrdered
+  Eye, Calendar, Tag, Layers, ChevronRight, Edit3, Save, ArrowLeft, Image as ImageIcon, Dices, ListOrdered,
+  Lightbulb, ListPlus
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -64,6 +65,11 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
   const [newQueueKeyword, setNewQueueKeyword] = useState('')
   const [savingQueue, setSavingQueue] = useState(false)
 
+  // AI Suggestions States
+  const [suggestions, setSuggestions] = useState<{ tema: string; tituloSugerido: string; categoria: string; justificativa: string }[]>([])
+  const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false)
+  const [showSuggestionsModal, setShowSuggestionsModal] = useState(false)
+
   const [loadingAcao, setLoadingAcao] = useState<string | null>(null)
   const [savingFallback, setSavingFallback] = useState(false)
   const [pending, startTransition] = useTransition()
@@ -102,14 +108,8 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
     setIsEditing(true)
   }
 
-  // Trigger AI Generation Sequence
-  const handleAIGenerate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!generationKeyword.trim()) {
-      toast.error('Por favor, informe a palavra-chave/tema.')
-      return
-    }
-
+  // Core AI Generation logic
+  const generateArticle = async (keyword: string) => {
     setIsGenerating(true)
     setGenerationStep(1)
     setGenerationMsg('Analisando o tema e planejando a estrutura SEO local...')
@@ -123,7 +123,7 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
       const res = await fetch('/api/admin/blog/gerar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keyword: generationKeyword.trim() })
+        body: JSON.stringify({ keyword })
       })
 
       if (!res.ok) {
@@ -166,11 +166,92 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
       toast.success('Artigo gerado pela IA com sucesso! Edite ou salve abaixo.')
       setIsGenerating(false)
       setIsEditing(true)
-      setGenerationKeyword('')
     } catch (err: any) {
       toast.error(`Erro na geração: ${err.message}`)
       setIsGenerating(false)
     }
+  }
+
+  // Trigger AI Generation Sequence (Manual Form)
+  const handleAIGenerate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!generationKeyword.trim()) {
+      toast.error('Por favor, informe a palavra-chave/tema.')
+      return
+    }
+    await generateArticle(generationKeyword.trim())
+    setGenerationKeyword('')
+  }
+
+  // Fetch suggestions from LLM
+  const handleFetchSuggestions = async () => {
+    setIsFetchingSuggestions(true)
+    setShowSuggestionsModal(true)
+    const toastId = toast.loading('Analisando artigos recentes e gerando pautas de SEO local...')
+    try {
+      const res = await fetch('/api/admin/blog/sugerir', {
+        method: 'POST',
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error ?? 'Falha ao obter sugestões')
+      }
+      const data = await res.json()
+      setSuggestions(data.suggestions || [])
+      toast.success('Pautas sugeridas com sucesso!', { id: toastId })
+    } catch (err: any) {
+      toast.error(`Erro: ${err.message}`, { id: toastId })
+      setShowSuggestionsModal(false)
+    } finally {
+      setIsFetchingSuggestions(false)
+    }
+  }
+
+  // Add a single suggestion to queue
+  const handleAddSuggestionToQueue = async (tema: string) => {
+    if (keywordQueue.includes(tema)) return
+    
+    setSavingQueue(true)
+    const updatedQueue = [...keywordQueue, tema]
+    try {
+      await saveConfigs({ blog_keyword_queue: JSON.stringify(updatedQueue) })
+      setKeywordQueue(updatedQueue)
+      toast.success(`"${tema}" adicionado à fila cron!`)
+    } catch {
+      toast.error('Erro ao atualizar fila no banco.')
+    } finally {
+      setSavingQueue(false)
+    }
+  }
+
+  // Add all suggestions to queue
+  const handleAddAllSuggestionsToQueue = async () => {
+    const newKeywords = suggestions
+      .map(s => s.tema)
+      .filter(tema => !keywordQueue.includes(tema))
+    
+    if (newKeywords.length === 0) {
+      toast.info('Todos os temas sugeridos já estão na fila!')
+      return
+    }
+
+    setSavingQueue(true)
+    const updatedQueue = [...keywordQueue, ...newKeywords]
+    try {
+      await saveConfigs({ blog_keyword_queue: JSON.stringify(updatedQueue) })
+      setKeywordQueue(updatedQueue)
+      toast.success(`${newKeywords.length} temas adicionados à fila cron!`)
+    } catch {
+      toast.error('Erro ao atualizar fila no banco.')
+    } finally {
+      setSavingQueue(false)
+    }
+  }
+
+  // Generate article now from suggestion
+  const handleGenerateFromSuggestion = async (tema: string) => {
+    setShowSuggestionsModal(false)
+    await generateArticle(tema)
   }
 
   // Generate featured image with DALL-E
@@ -784,10 +865,22 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
 
             {/* Bloco Fila Cron Automático */}
             <div className="rounded-2xl border border-brand-border bg-brand-surface p-5 shadow-sm space-y-4">
-              <h3 className="text-base font-bold text-brand-text flex items-center gap-2">
-                <ListOrdered className="size-5 text-brand-accent" />
-                Fila de Temas (Autopilot / Cron)
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-bold text-brand-text flex items-center gap-2">
+                  <ListOrdered className="size-5 text-brand-accent" />
+                  Fila de Temas (Autopilot / Cron)
+                </h3>
+                <button
+                  type="button"
+                  onClick={handleFetchSuggestions}
+                  disabled={isFetchingSuggestions}
+                  className="inline-flex items-center gap-1.5 text-[11px] bg-brand-accent/10 border border-brand-accent/25 hover:bg-brand-accent/20 text-brand-accent font-bold px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+                  title="Sugerir ideias de pautas com IA"
+                >
+                  <Lightbulb className="size-3.5" />
+                  Sugerir Temas (IA)
+                </button>
+              </div>
               <p className="text-xs text-brand-muted leading-relaxed">
                 Adicione temas na fila abaixo. O cron de automação diário consumirá o primeiro tema e publicará o artigo automaticamente. <strong>Se a fila esvaziar, o Autopilot criará temas inéditos sozinho!</strong>
               </p>
@@ -1024,6 +1117,142 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
                 </table>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Sugestões de Temas por IA */}
+      {showSuggestionsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-brand-surface border border-brand-border rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="p-5 border-b border-brand-border flex items-center justify-between bg-brand-surface-2">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-brand-accent/10 text-brand-accent">
+                  <Lightbulb className="size-5 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-brand-text text-base">Ideias de Pautas Sugeridas por IA</h3>
+                  <p className="text-brand-muted text-xs mt-0.5">Sugestões de pautas baseadas no seu blog para atrair clientes de SJC.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowSuggestionsModal(false)}
+                className="text-brand-muted hover:text-brand-text p-1.5 rounded-lg border border-transparent hover:border-brand-border hover:bg-brand-surface cursor-pointer transition-all font-bold text-lg"
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 overflow-y-auto space-y-4 flex-1 scrollbar-thin">
+              {isFetchingSuggestions ? (
+                <div className="flex flex-col items-center justify-center py-20 space-y-4">
+                  <Loader2 className="size-10 text-brand-accent animate-spin" />
+                  <div className="text-center">
+                    <span className="font-bold text-sm text-brand-text block">Gerando Sugestões Exclusivas...</span>
+                    <p className="text-xs text-brand-muted mt-1">Nossa IA está analisando seus artigos escritos e elaborando novas pautas locais.</p>
+                  </div>
+                </div>
+              ) : suggestions.length === 0 ? (
+                <div className="text-center py-16 text-brand-muted">
+                  <AlertCircle className="size-8 mx-auto mb-2 text-brand-muted opacity-45" />
+                  <span className="font-semibold text-sm text-brand-text block">Nenhuma sugestão encontrada</span>
+                  <p className="text-xs text-brand-muted mt-1">Por favor, tente gerar novamente ou verifique as configurações de IA.</p>
+                  <button
+                    onClick={handleFetchSuggestions}
+                    className="mt-4 inline-flex items-center gap-1.5 bg-brand-accent hover:bg-brand-accent/90 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition-all cursor-pointer"
+                  >
+                    <RefreshCw className="size-3.5" />
+                    Tentar Novamente
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {suggestions.map((sug, i) => {
+                    const isAlreadyQueued = keywordQueue.includes(sug.tema)
+                    return (
+                      <div
+                        key={i}
+                        className="p-4 rounded-xl border border-brand-border bg-brand-surface-2/45 hover:border-brand-accent/25 transition-all space-y-3 group"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-brand-accent/10 border border-brand-accent/15 text-brand-accent">
+                              {sug.categoria}
+                            </span>
+                            <h4 className="font-extrabold text-sm text-brand-text mt-1.5 leading-snug group-hover:text-brand-accent transition-colors">
+                              {sug.tituloSugerido}
+                            </h4>
+                            <p className="text-xs text-brand-muted mt-1 font-mono">
+                              Palavra-chave: <span className="text-brand-text font-semibold">{sug.tema}</span>
+                            </p>
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-brand-muted bg-brand-surface p-2.5 rounded-lg border border-brand-border leading-relaxed">
+                          {sug.justificativa}
+                        </p>
+
+                        <div className="flex items-center justify-end gap-2 pt-1 border-t border-brand-border/60">
+                          <button
+                            onClick={() => handleGenerateFromSuggestion(sug.tema)}
+                            className="inline-flex items-center gap-1.5 hover:bg-brand-accent/10 border border-transparent hover:border-brand-accent/20 text-brand-accent hover:text-brand-accent font-bold text-[11px] px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+                          >
+                            <Sparkles className="size-3.5" />
+                            Gerar Artigo Agora
+                          </button>
+                          
+                          <button
+                            onClick={() => handleAddSuggestionToQueue(sug.tema)}
+                            disabled={isAlreadyQueued || savingQueue}
+                            className={cn(
+                              'inline-flex items-center gap-1.5 font-bold text-[11px] px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer shadow-sm border',
+                              isAlreadyQueued
+                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500 cursor-default'
+                                : 'bg-brand-surface border-brand-border hover:border-brand-accent/50 text-brand-text hover:bg-brand-surface-2'
+                            )}
+                          >
+                            {isAlreadyQueued ? <Check className="size-3.5" /> : <Plus className="size-3.5 text-brand-accent" />}
+                            {isAlreadyQueued ? 'Adicionado à Fila' : 'Adicionar à Fila'}
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            {suggestions.length > 0 && !isFetchingSuggestions && (
+              <div className="p-4 border-t border-brand-border bg-brand-surface-2 flex items-center justify-between">
+                <button
+                  onClick={handleFetchSuggestions}
+                  disabled={isFetchingSuggestions}
+                  className="inline-flex items-center gap-1.5 text-xs text-brand-muted hover:text-brand-text font-semibold transition-colors cursor-pointer"
+                >
+                  <RefreshCw className="size-3.5" />
+                  Recarregar Ideias
+                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowSuggestionsModal(false)}
+                    className="bg-brand-surface border border-brand-border hover:bg-brand-surface-2 text-brand-text font-bold text-xs px-4 py-2 rounded-xl transition-colors cursor-pointer shadow-sm"
+                  >
+                    Fechar
+                  </button>
+                  <button
+                    onClick={handleAddAllSuggestionsToQueue}
+                    disabled={savingQueue}
+                    className="bg-brand-accent hover:bg-brand-accent/90 text-white font-bold text-xs px-4 py-2 rounded-xl transition-colors cursor-pointer shadow-md flex items-center gap-1.5"
+                  >
+                    <ListPlus className="size-3.5" />
+                    Adicionar Todos à Fila
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
