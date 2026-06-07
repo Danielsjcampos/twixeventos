@@ -1,4 +1,4 @@
-export const CURRENT_VERSION = '1.7.2'
+export const CURRENT_VERSION = '1.8.0'
 
 export type ChangeType = 'feature' | 'fix' | 'improvement' | 'security'
 
@@ -15,6 +15,19 @@ export interface Version {
 }
 
 export const CHANGELOG: Version[] = [
+  {
+    version: '1.8.0',
+    date: '2026-06-07',
+    title: 'AI Blog System, Standalone Uploads Service & Sitemap Integration',
+    changes: [
+      { type: 'feature', text: 'Novo sistema de blog inteligente com IA no painel administrativo, contendo gerenciador de fila de palavras-chave e sugestões automáticas de tópicos.' },
+      { type: 'feature', text: 'Integração de Cron diário para auto-geração de artigos e adição de meta tag de verificação do Google Search Console.' },
+      { type: 'fix', text: 'Criação de rota de serviço dinâmica para servir uploads em Next standalone (resolvendo ausência de arquivos estáticos dinâmicos em produção autohospedada).' },
+      { type: 'fix', text: 'Correção de erro 500 no carregamento da página de blog causado pela desserialização de campos de data dentro do unstable_cache.' },
+      { type: 'fix', text: 'Sincronização automática do sitemap para incluir dinamicamente a página principal do blog e todos os artigos publicados.' },
+      { type: 'improvement', text: 'Adicionado teste de carregamento de blog na suíte de testes de regressão do Playwright.' },
+    ],
+  },
   {
     version: '1.7.2',
     date: '2026-05-30',

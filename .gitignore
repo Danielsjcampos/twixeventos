@@ -45,3 +45,18 @@ next-env.d.ts
 
 # uploads (persisted via Docker volume in production)
 /public/uploads/
+
+# databases
+*.db
+
+# agents/tooling
+/.claude/
+/.claude-flow/
+/.swarm/
+/skills-lock.json
+
+# test results
+/test-results/
+
+# migration backups
+/_migration/

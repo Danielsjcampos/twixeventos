@@ -28,8 +28,8 @@ export default async function BlogPage() {
   const serializedPosts = posts.map(p => ({
     ...p,
     tags: p.tags ?? [],
-    createdAt: p.createdAt.toISOString(),
-    updatedAt: p.updatedAt.toISOString(),
+    createdAt: p.createdAt instanceof Date ? p.createdAt.toISOString() : new Date(p.createdAt).toISOString(),
+    updatedAt: p.updatedAt instanceof Date ? p.updatedAt.toISOString() : new Date(p.updatedAt).toISOString(),
   }))
 
   return (
