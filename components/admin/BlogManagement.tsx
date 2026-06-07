@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import {
   FileText, Plus, Search, Bot, Sparkles, RefreshCw, Trash2, Check,
   Loader2, CheckCircle2, XCircle, AlertCircle, ExternalLink, HelpCircle,
-  Eye, Calendar, Tag, Layers, ChevronRight, Edit3, Save, ArrowLeft, Image as ImageIcon, Dices
+  Eye, Calendar, Tag, Layers, ChevronRight, Edit3, Save, ArrowLeft, Image as ImageIcon, Dices, ListOrdered
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -33,13 +33,15 @@ interface BlogPost {
 interface Props {
   initialPosts: BlogPost[]
   initialFallbackImages: string[]
+  initialKeywordQueue: string[]
 }
 
 const CATEGORIES = ['Dicas de Festa', 'Lazer e Diversão', 'Planejamento', 'Brinquedos', 'Eventos Corporativos']
 
-export function BlogManagement({ initialPosts, initialFallbackImages }: Props) {
+export function BlogManagement({ initialPosts, initialFallbackImages, initialKeywordQueue }: Props) {
   const [posts, setPosts] = useState<BlogPost[]>(initialPosts)
   const [fallbackImages, setFallbackImages] = useState<string[]>(initialFallbackImages)
+  const [keywordQueue, setKeywordQueue] = useState<string[]>(initialKeywordQueue)
   const [activeTab, setActiveTab] = useState<'posts' | 'fallback'>('posts')
 
   const [busca, setBusca] = useState('')
@@ -57,6 +59,10 @@ export function BlogManagement({ initialPosts, initialFallbackImages }: Props) {
   const [generationMsg, setGenerationMsg] = useState('')
   const [imagePrompt, setImagePrompt] = useState('')
   const [generatingImage, setGeneratingImage] = useState(false)
+
+  // Queue Inputs
+  const [newQueueKeyword, setNewQueueKeyword] = useState('')
+  const [savingQueue, setSavingQueue] = useState(false)
 
   const [loadingAcao, setLoadingAcao] = useState<string | null>(null)
   const [savingFallback, setSavingFallback] = useState(false)
@@ -307,6 +313,39 @@ export function BlogManagement({ initialPosts, initialFallbackImages }: Props) {
       toast.error('Erro ao atualizar galeria fallback no banco.')
     } finally {
       setSavingFallback(false)
+    }
+  }
+
+  // Manage Keyword Queue
+  const handleAddQueueKeyword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newQueueKeyword.trim()) return
+
+    setSavingQueue(true)
+    const updatedQueue = [...keywordQueue, newQueueKeyword.trim()]
+    try {
+      await saveConfigs({ blog_keyword_queue: JSON.stringify(updatedQueue) })
+      setKeywordQueue(updatedQueue)
+      setNewQueueKeyword('')
+      toast.success(`Tema "${newQueueKeyword}" adicionado à fila cron!`)
+    } catch {
+      toast.error('Erro ao salvar fila no banco.')
+    } finally {
+      setSavingQueue(false)
+    }
+  }
+
+  const handleRemoveQueueKeyword = async (keywordToRemove: string) => {
+    setSavingQueue(true)
+    const updatedQueue = keywordQueue.filter(k => k !== keywordToRemove)
+    try {
+      await saveConfigs({ blog_keyword_queue: JSON.stringify(updatedQueue) })
+      setKeywordQueue(updatedQueue)
+      toast.success('Tema removido da fila cron.')
+    } catch {
+      toast.error('Erro ao atualizar fila no banco.')
+    } finally {
+      setSavingQueue(false)
     }
   }
 
@@ -708,15 +747,16 @@ export function BlogManagement({ initialPosts, initialFallbackImages }: Props) {
       ) : (
         /* ================== POSTS LIST VIEW ================== */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Gerador IA (Esquerda) */}
+          {/* Gerador IA & Fila Cron (Esquerda) */}
           <div className="lg:col-span-4 space-y-6">
+            {/* Bloco Gerador Manual Instantâneo */}
             <div className="rounded-2xl border border-brand-border bg-brand-surface p-5 shadow-sm space-y-4">
               <h3 className="text-base font-bold text-brand-text flex items-center gap-2">
                 <Bot className="size-5 text-brand-accent" />
-                Gerador de Artigos por IA
+                Gerador Instantâneo via IA
               </h3>
               <p className="text-xs text-brand-muted leading-relaxed">
-                Insira uma palavra-chave ou tema e a IA criará um artigo completo com múltiplos H2s, parágrafos ricos em SEO, otimizações locais e prompts de imagem integrada.
+                Insira um tema e a IA criará o artigo na hora. Você poderá revisar, ajustar a capa e decidir se publica ou salva como rascunho.
               </p>
               
               <form onSubmit={handleAIGenerate} className="space-y-3 pt-2">
@@ -727,7 +767,7 @@ export function BlogManagement({ initialPosts, initialFallbackImages }: Props) {
                     required
                     value={generationKeyword}
                     onChange={e => setGenerationKeyword(e.target.value)}
-                    className="w-full bg-brand-surface border border-brand-border rounded-xl px-3.5 py-2.5 text-brand-text text-sm focus:outline-none focus:border-brand-accent transition-colors"
+                    className="w-full bg-brand-surface border border-brand-border rounded-xl px-3.5 py-2 text-brand-text text-sm focus:outline-none focus:border-brand-accent transition-colors"
                     placeholder="Ex: Como planejar um aniversário infantil..."
                   />
                 </div>
@@ -737,9 +777,69 @@ export function BlogManagement({ initialPosts, initialFallbackImages }: Props) {
                   className="w-full inline-flex items-center justify-center gap-2 bg-brand-accent hover:bg-brand-accent/90 disabled:opacity-60 text-white font-bold text-sm py-2.5 rounded-xl transition-colors cursor-pointer shadow-md"
                 >
                   <Sparkles className="size-4" />
-                  Gerar Artigo Completo
+                  Gerar Artigo Agora
                 </button>
               </form>
+            </div>
+
+            {/* Bloco Fila Cron Automático */}
+            <div className="rounded-2xl border border-brand-border bg-brand-surface p-5 shadow-sm space-y-4">
+              <h3 className="text-base font-bold text-brand-text flex items-center gap-2">
+                <ListOrdered className="size-5 text-brand-accent" />
+                Fila de Temas (Autopilot / Cron)
+              </h3>
+              <p className="text-xs text-brand-muted leading-relaxed">
+                Adicione temas na fila abaixo. O cron de automação diário consumirá o primeiro tema e publicará o artigo automaticamente. <strong>Se a fila esvaziar, o Autopilot criará temas inéditos sozinho!</strong>
+              </p>
+
+              <form onSubmit={handleAddQueueKeyword} className="space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    required
+                    value={newQueueKeyword}
+                    onChange={e => setNewQueueKeyword(e.target.value)}
+                    disabled={savingQueue}
+                    className="flex-1 bg-brand-surface border border-brand-border rounded-xl px-3 py-1.5 text-brand-text text-xs focus:outline-none focus:border-brand-accent"
+                    placeholder="Novo tema para fila..."
+                  />
+                  <button
+                    type="submit"
+                    disabled={savingQueue || !newQueueKeyword.trim()}
+                    className="bg-brand-surface-2 border border-brand-border hover:border-brand-accent/50 text-brand-text font-bold text-xs px-3 rounded-xl transition-colors cursor-pointer"
+                  >
+                    {savingQueue ? <Loader2 className="size-3 animate-spin" /> : <Plus className="size-3.5" />}
+                  </button>
+                </div>
+              </form>
+
+              <div className="space-y-2 pt-2 border-t border-brand-border/60">
+                <h4 className="text-[11px] font-bold text-brand-muted uppercase">Próximas publicações ({keywordQueue.length}):</h4>
+                {keywordQueue.length === 0 ? (
+                  <p className="text-[11px] text-amber-500 bg-amber-500/5 border border-amber-500/10 rounded-lg p-2 leading-relaxed">
+                    Fila vazia! O Autopilot de IA está ativo e escolherá tópicos de forma 100% autônoma nas próximas execuções.
+                  </p>
+                ) : (
+                  <div className="max-h-[200px] overflow-y-auto space-y-1.5 scrollbar-thin pr-1">
+                    {keywordQueue.map((keyword, i) => (
+                      <div key={i} className="flex items-center justify-between gap-2 bg-brand-surface-2/40 border border-brand-border/60 rounded-lg px-2.5 py-1.5 text-xs">
+                        <span className="truncate font-medium text-brand-text">
+                          {i + 1}. {keyword}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveQueueKeyword(keyword)}
+                          disabled={savingQueue}
+                          className="text-brand-muted hover:text-red-500 shrink-0 cursor-pointer"
+                          title="Remover da fila"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

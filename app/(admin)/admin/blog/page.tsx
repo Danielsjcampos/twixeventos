@@ -9,9 +9,10 @@ export const dynamic = 'force-dynamic'
 import { getConfig } from '@/lib/db/queries/configuracoes'
 
 async function BlogContent() {
-  const [posts, fallbackImagensRaw] = await Promise.all([
+  const [posts, fallbackImagensRaw, keywordQueueRaw] = await Promise.all([
     getPostsAdmin({}),
     getConfig('blog_fallback_imagens'),
+    getConfig('blog_keyword_queue'),
   ])
   
   let fallbackImagens: string[] = []
@@ -20,6 +21,15 @@ async function BlogContent() {
       fallbackImagens = JSON.parse(fallbackImagensRaw)
     } catch {
       fallbackImagens = []
+    }
+  }
+
+  let keywordQueue: string[] = []
+  if (keywordQueueRaw) {
+    try {
+      keywordQueue = JSON.parse(keywordQueueRaw)
+    } catch {
+      keywordQueue = []
     }
   }
 
@@ -36,6 +46,7 @@ async function BlogContent() {
     <BlogManagement 
       initialPosts={serializedPosts} 
       initialFallbackImages={fallbackImagens} 
+      initialKeywordQueue={keywordQueue}
     />
   )
 }
