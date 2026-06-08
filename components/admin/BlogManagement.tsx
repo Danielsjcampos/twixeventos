@@ -2,10 +2,33 @@
 
 import { useState, useTransition } from 'react'
 import {
-  FileText, Plus, Search, Bot, Sparkles, RefreshCw, Trash2, Check,
-  Loader2, CheckCircle2, XCircle, AlertCircle, ExternalLink, HelpCircle,
-  Eye, Calendar, Tag, Layers, ChevronRight, Edit3, Save, ArrowLeft, Image as ImageIcon, Dices, ListOrdered,
-  Lightbulb, ListPlus
+  FileText,
+  Plus,
+  Search,
+  Bot,
+  Sparkles,
+  RefreshCw,
+  Trash2,
+  Check,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  ExternalLink,
+  HelpCircle,
+  Eye,
+  Calendar,
+  Tag,
+  Layers,
+  ChevronRight,
+  Edit3,
+  Save,
+  ArrowLeft,
+  Image as ImageIcon,
+  Dices,
+  ListOrdered,
+  Lightbulb,
+  ListPlus,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -37,9 +60,19 @@ interface Props {
   initialKeywordQueue: string[]
 }
 
-const CATEGORIES = ['Dicas de Festa', 'Lazer e Diversão', 'Planejamento', 'Brinquedos', 'Eventos Corporativos']
+const CATEGORIES = [
+  'Dicas de Festa',
+  'Lazer e Diversão',
+  'Planejamento',
+  'Brinquedos',
+  'Eventos Corporativos',
+]
 
-export function BlogManagement({ initialPosts, initialFallbackImages, initialKeywordQueue }: Props) {
+export function BlogManagement({
+  initialPosts,
+  initialFallbackImages,
+  initialKeywordQueue,
+}: Props) {
   const [posts, setPosts] = useState<BlogPost[]>(initialPosts)
   const [fallbackImages, setFallbackImages] = useState<string[]>(initialFallbackImages)
   const [keywordQueue, setKeywordQueue] = useState<string[]>(initialKeywordQueue)
@@ -52,7 +85,7 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
   // Edit Mode States
   const [isEditing, setIsEditing] = useState(false)
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null)
-  
+
   // AI Generation States
   const [isGenerating, setIsGenerating] = useState(false)
   const [generationKeyword, setGenerationKeyword] = useState('')
@@ -66,7 +99,9 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
   const [savingQueue, setSavingQueue] = useState(false)
 
   // AI Suggestions States
-  const [suggestions, setSuggestions] = useState<{ tema: string; tituloSugerido: string; categoria: string; justificativa: string }[]>([])
+  const [suggestions, setSuggestions] = useState<
+    { tema: string; tituloSugerido: string; categoria: string; justificativa: string }[]
+  >([])
   const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false)
   const [showSuggestionsModal, setShowSuggestionsModal] = useState(false)
 
@@ -102,7 +137,7 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
       seoDescription: '',
       seoKeywords: '',
       tempoLeitura: 5,
-      visualizacoes: 0
+      visualizacoes: 0,
     })
     setImagePrompt('')
     setIsEditing(true)
@@ -115,15 +150,15 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
     setGenerationMsg('Analisando o tema e planejando a estrutura SEO local...')
 
     try {
-      await new Promise(r => setTimeout(r, 1200))
-      
+      await new Promise((r) => setTimeout(r, 1200))
+
       setGenerationStep(2)
       setGenerationMsg('Escrevendo a introdução e desenvolvendo os tópicos (H2) principais...')
 
       const res = await fetch('/api/admin/blog/gerar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keyword })
+        body: JSON.stringify({ keyword }),
       })
 
       if (!res.ok) {
@@ -133,14 +168,14 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
 
       setGenerationStep(3)
       setGenerationMsg('Otimizando parágrafos para SEO e ajustando metadados...')
-      await new Promise(r => setTimeout(r, 1500))
+      await new Promise((r) => setTimeout(r, 1500))
 
       const data = await res.json()
       const generated = data.post
 
       setGenerationStep(4)
       setGenerationMsg('Formatando a resposta final...')
-      await new Promise(r => setTimeout(r, 800))
+      await new Promise((r) => setTimeout(r, 800))
 
       // Pre-fill the editor with the AI generated post
       setEditingPost({
@@ -156,7 +191,7 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
         seoDescription: generated.seoDescription || '',
         seoKeywords: generated.seoKeywords || '',
         tempoLeitura: Math.ceil((generated.conteudo || '').split(/\s+/).length / 200) || 5,
-        visualizacoes: 0
+        visualizacoes: 0,
       })
 
       if (generated.imagePrompt) {
@@ -207,10 +242,47 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
     }
   }
 
+  // Auto-generate suggestions and add them directly to the queue
+  const handleAutoGenerateQueue = async () => {
+    setSavingQueue(true)
+    const toastId = toast.loading('Gerando e adicionando novos temas à fila via IA...')
+    try {
+      const res = await fetch('/api/admin/blog/sugerir', {
+        method: 'POST',
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error ?? 'Falha ao obter sugestões')
+      }
+      const data = await res.json()
+      const suggestedThemes = (data.suggestions || []).map((s: any) => s.tema)
+      
+      if (suggestedThemes.length === 0) {
+        toast.info('Nenhum tema sugerido retornado pela IA.', { id: toastId })
+        return
+      }
+
+      const newKeywords = suggestedThemes.filter((tema: string) => !keywordQueue.includes(tema))
+      if (newKeywords.length === 0) {
+        toast.info('Os temas sugeridos já estão na fila.', { id: toastId })
+        return
+      }
+
+      const updatedQueue = [...keywordQueue, ...newKeywords]
+      await saveConfigs({ blog_keyword_queue: JSON.stringify(updatedQueue) })
+      setKeywordQueue(updatedQueue)
+      toast.success(`${newKeywords.length} novos temas adicionados à fila cron com sucesso!`, { id: toastId })
+    } catch (err: any) {
+      toast.error(`Erro ao gerar temas para a fila: ${err.message}`, { id: toastId })
+    } finally {
+      setSavingQueue(false)
+    }
+  }
+
   // Add a single suggestion to queue
   const handleAddSuggestionToQueue = async (tema: string) => {
     if (keywordQueue.includes(tema)) return
-    
+
     setSavingQueue(true)
     const updatedQueue = [...keywordQueue, tema]
     try {
@@ -227,9 +299,9 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
   // Add all suggestions to queue
   const handleAddAllSuggestionsToQueue = async () => {
     const newKeywords = suggestions
-      .map(s => s.tema)
-      .filter(tema => !keywordQueue.includes(tema))
-    
+      .map((s) => s.tema)
+      .filter((tema) => !keywordQueue.includes(tema))
+
     if (newKeywords.length === 0) {
       toast.info('Todos os temas sugeridos já estão na fila!')
       return
@@ -262,7 +334,9 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
     }
 
     setGeneratingImage(true)
-    const toastId = toast.loading('Gerando imagem de destaque via DALL-E 3 (pode demorar até 15s)...')
+    const toastId = toast.loading(
+      'Gerando imagem de destaque via DALL-E 3 (pode demorar até 15s)...'
+    )
 
     try {
       const res = await fetch('/api/admin/blog/gerar-imagem', {
@@ -270,14 +344,14 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: imagePrompt.trim(),
-          slug: editingPost?.slug || 'post-capa'
-        })
+          slug: editingPost?.slug || 'post-capa',
+        }),
       })
 
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Erro ao gerar imagem')
 
-      setEditingPost(prev => prev ? { ...prev, fotoDestaque: data.url } : null)
+      setEditingPost((prev) => (prev ? { ...prev, fotoDestaque: data.url } : null))
       toast.success('Imagem destacada gerada e salva localmente!', { id: toastId })
     } catch (err: any) {
       toast.error(`Erro ao gerar imagem: ${err.message}`, { id: toastId })
@@ -294,7 +368,7 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
     }
     const idx = Math.floor(Math.random() * fallbackImages.length)
     const url = fallbackImages[idx]
-    setEditingPost(prev => prev ? { ...prev, fotoDestaque: url } : null)
+    setEditingPost((prev) => (prev ? { ...prev, fotoDestaque: url } : null))
     toast.success('Imagem sorteada da galeria fallback!')
   }
 
@@ -311,10 +385,16 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
     let postToSave = { ...editingPost }
 
     // If published and cover is empty, auto-assign from fallback gallery
-    if (postToSave.status === 'publicado' && !postToSave.fotoDestaque && fallbackImages.length > 0) {
+    if (
+      postToSave.status === 'publicado' &&
+      !postToSave.fotoDestaque &&
+      fallbackImages.length > 0
+    ) {
       const idx = Math.floor(Math.random() * fallbackImages.length)
       postToSave.fotoDestaque = fallbackImages[idx]
-      toast.info('Post publicado sem capa! Associamos uma imagem da galeria fallback automaticamente.')
+      toast.info(
+        'Post publicado sem capa! Associamos uma imagem da galeria fallback automaticamente.'
+      )
     }
 
     const isUpdate = !!postToSave.id
@@ -326,13 +406,15 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
       const res = await fetch(endpoint, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(postToSave)
+        body: JSON.stringify(postToSave),
       })
 
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Erro ao salvar post')
 
-      toast.success(isUpdate ? 'Post de blog atualizado com sucesso!' : 'Novo post criado com sucesso!')
+      toast.success(
+        isUpdate ? 'Post de blog atualizado com sucesso!' : 'Novo post criado com sucesso!'
+      )
       setIsEditing(false)
       setEditingPost(null)
       setImagePrompt('')
@@ -351,7 +433,7 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
     setLoadingAcao(id)
     try {
       const res = await fetch(`/api/admin/blog/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
       })
 
       if (!res.ok) {
@@ -385,7 +467,7 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
 
   const handleRemoveFallbackImage = async (url: string) => {
     setSavingFallback(true)
-    const updatedList = fallbackImages.filter(img => img !== url)
+    const updatedList = fallbackImages.filter((img) => img !== url)
     try {
       await saveConfigs({ blog_fallback_imagens: JSON.stringify(updatedList) })
       setFallbackImages(updatedList)
@@ -418,7 +500,7 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
 
   const handleRemoveQueueKeyword = async (keywordToRemove: string) => {
     setSavingQueue(true)
-    const updatedQueue = keywordQueue.filter(k => k !== keywordToRemove)
+    const updatedQueue = keywordQueue.filter((k) => k !== keywordToRemove)
     try {
       await saveConfigs({ blog_keyword_queue: JSON.stringify(updatedQueue) })
       setKeywordQueue(updatedQueue)
@@ -431,17 +513,15 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
   }
 
   // Filter lists locally
-  const filteredPosts = posts.filter(p => {
+  const filteredPosts = posts.filter((p) => {
     const matchesBusca =
       busca.trim() === '' ||
       p.titulo.toLowerCase().includes(busca.toLowerCase()) ||
       p.categoria.toLowerCase().includes(busca.toLowerCase())
 
-    const matchesStatus =
-      statusFiltro === 'todos' || p.status === statusFiltro
+    const matchesStatus = statusFiltro === 'todos' || p.status === statusFiltro
 
-    const matchesCategoria =
-      categoriaFiltro === 'todos' || p.categoria === categoriaFiltro
+    const matchesCategoria = categoriaFiltro === 'todos' || p.categoria === categoriaFiltro
 
     return matchesBusca && matchesStatus && matchesCategoria
   })
@@ -456,7 +536,8 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
             Blog SEO Otimizado
           </h1>
           <p className="text-brand-muted text-sm mt-1">
-            Crie, publique e gere artigos de alta conversão otimizados localmente com Inteligência Artificial.
+            Crie, publique e gere artigos de alta conversão otimizados localmente com Inteligência
+            Artificial.
           </p>
         </div>
         {!isEditing && (
@@ -467,7 +548,9 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
                 onClick={() => setActiveTab('posts')}
                 className={cn(
                   'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
-                  activeTab === 'posts' ? 'bg-brand-accent text-white' : 'text-brand-muted hover:text-brand-text'
+                  activeTab === 'posts'
+                    ? 'bg-brand-accent text-white'
+                    : 'text-brand-muted hover:text-brand-text'
                 )}
               >
                 Artigos
@@ -476,19 +559,28 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
                 onClick={() => setActiveTab('fallback')}
                 className={cn(
                   'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
-                  activeTab === 'fallback' ? 'bg-brand-accent text-white' : 'text-brand-muted hover:text-brand-text'
+                  activeTab === 'fallback'
+                    ? 'bg-brand-accent text-white'
+                    : 'text-brand-muted hover:text-brand-text'
                 )}
               >
                 <ImageIcon className="size-3.5" />
                 Galeria Fallback
                 {fallbackImages.length > 0 && (
-                  <span className={cn('text-[9px] font-bold px-1.5 py-0.5 rounded-md font-mono', activeTab === 'fallback' ? 'bg-white/20 text-white' : 'bg-brand-surface border border-brand-border text-brand-text')}>
+                  <span
+                    className={cn(
+                      'text-[9px] font-bold px-1.5 py-0.5 rounded-md font-mono',
+                      activeTab === 'fallback'
+                        ? 'bg-white/20 text-white'
+                        : 'bg-brand-surface border border-brand-border text-brand-text'
+                    )}
+                  >
                     {fallbackImages.length}
                   </span>
                 )}
               </button>
             </div>
-            
+
             {activeTab === 'posts' && (
               <button
                 onClick={handleCreateEmpty}
@@ -504,14 +596,19 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
 
       {isGenerating && (
         <div className="bg-brand-surface border-2 border-brand-accent/30 rounded-2xl p-6 shadow-md relative overflow-hidden animate-pulse">
-          <div className="absolute top-0 left-0 h-1 bg-brand-accent transition-all duration-500" style={{ width: `${(generationStep / 4) * 100}%` }} />
+          <div
+            className="absolute top-0 left-0 h-1 bg-brand-accent transition-all duration-500"
+            style={{ width: `${(generationStep / 4) * 100}%` }}
+          />
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <span className="flex items-center justify-center size-12 rounded-full bg-brand-accent/10 text-brand-accent">
                 <Loader2 className="size-6 animate-spin" />
               </span>
               <div>
-                <h4 className="font-bold text-brand-text text-base">Escrevendo Post de Blog com IA</h4>
+                <h4 className="font-bold text-brand-text text-base">
+                  Escrevendo Post de Blog com IA
+                </h4>
                 <p className="text-brand-muted text-xs mt-0.5">{generationMsg}</p>
               </div>
             </div>
@@ -549,12 +646,14 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
               <div className="md:col-span-2 space-y-5">
                 {/* Título */}
                 <div className="space-y-1">
-                  <label className="block text-xs font-bold text-brand-muted uppercase">Título do Post</label>
+                  <label className="block text-xs font-bold text-brand-muted uppercase">
+                    Título do Post
+                  </label>
                   <input
                     type="text"
                     required
                     value={editingPost.titulo}
-                    onChange={e => setEditingPost({ ...editingPost, titulo: e.target.value })}
+                    onChange={(e) => setEditingPost({ ...editingPost, titulo: e.target.value })}
                     className="w-full bg-brand-surface border border-brand-border rounded-xl px-4 py-2.5 text-brand-text font-semibold text-base focus:outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent transition-all duration-150"
                     placeholder="Ex: 5 Dicas para Escolher os Melhores Brinquedos Infláveis em SJC"
                   />
@@ -562,11 +661,13 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
 
                 {/* Slug */}
                 <div className="space-y-1">
-                  <label className="block text-xs font-bold text-brand-muted uppercase">Slug (URL amigável)</label>
+                  <label className="block text-xs font-bold text-brand-muted uppercase">
+                    Slug (URL amigável)
+                  </label>
                   <input
                     type="text"
                     value={editingPost.slug}
-                    onChange={e => setEditingPost({ ...editingPost, slug: e.target.value })}
+                    onChange={(e) => setEditingPost({ ...editingPost, slug: e.target.value })}
                     className="w-full bg-brand-surface border border-brand-border rounded-xl px-4 py-2.5 text-brand-text text-sm font-mono focus:outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent transition-all duration-150"
                     placeholder="ex-cinco-dicas-brinquedos-inflaveis-sjc"
                   />
@@ -575,14 +676,20 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
                 {/* Categoria e Tags */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold text-brand-muted uppercase">Categoria</label>
+                    <label className="block text-xs font-bold text-brand-muted uppercase">
+                      Categoria
+                    </label>
                     <select
                       value={editingPost.categoria}
-                      onChange={e => setEditingPost({ ...editingPost, categoria: e.target.value })}
+                      onChange={(e) =>
+                        setEditingPost({ ...editingPost, categoria: e.target.value })
+                      }
                       className="w-full bg-brand-surface border border-brand-border rounded-xl px-4 py-2.5 text-brand-text text-sm focus:outline-none focus:border-brand-accent transition-colors"
                     >
-                      {CATEGORIES.map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
+                      {CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
                       ))}
                       {!CATEGORIES.includes(editingPost.categoria) && (
                         <option value={editingPost.categoria}>{editingPost.categoria}</option>
@@ -590,14 +697,21 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
                     </select>
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold text-brand-muted uppercase">Tags (separadas por vírgula)</label>
+                    <label className="block text-xs font-bold text-brand-muted uppercase">
+                      Tags (separadas por vírgula)
+                    </label>
                     <input
                       type="text"
                       value={editingPost.tags.join(', ')}
-                      onChange={e => setEditingPost({
-                        ...editingPost,
-                        tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean)
-                      })}
+                      onChange={(e) =>
+                        setEditingPost({
+                          ...editingPost,
+                          tags: e.target.value
+                            .split(',')
+                            .map((t) => t.trim())
+                            .filter(Boolean),
+                        })
+                      }
                       className="w-full bg-brand-surface border border-brand-border rounded-xl px-4 py-2.5 text-brand-text text-sm focus:outline-none focus:border-brand-accent transition-all duration-150"
                       placeholder="Festa Infantil, Brinquedos SJC, Lazer"
                     />
@@ -606,11 +720,13 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
 
                 {/* Resumo */}
                 <div className="space-y-1">
-                  <label className="block text-xs font-bold text-brand-muted uppercase">Resumo (Excerpt para buscas)</label>
+                  <label className="block text-xs font-bold text-brand-muted uppercase">
+                    Resumo (Excerpt para buscas)
+                  </label>
                   <textarea
                     rows={2}
                     value={editingPost.resumo || ''}
-                    onChange={e => setEditingPost({ ...editingPost, resumo: e.target.value })}
+                    onChange={(e) => setEditingPost({ ...editingPost, resumo: e.target.value })}
                     className="w-full bg-brand-surface border border-brand-border rounded-xl px-4 py-3 text-brand-text text-sm focus:outline-none focus:border-brand-accent transition-colors resize-none"
                     placeholder="Um resumo curto do post com no máximo 160 caracteres..."
                   />
@@ -619,14 +735,18 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
                 {/* Conteúdo HTML */}
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold text-brand-muted uppercase">Conteúdo do Artigo (HTML)</label>
-                    <span className="text-[10px] text-brand-muted font-medium">Use tags &lt;h2&gt; para estruturar o artigo</span>
+                    <label className="block text-xs font-bold text-brand-muted uppercase">
+                      Conteúdo do Artigo (HTML)
+                    </label>
+                    <span className="text-[10px] text-brand-muted font-medium">
+                      Use tags &lt;h2&gt; para estruturar o artigo
+                    </span>
                   </div>
                   <textarea
                     rows={12}
                     required
                     value={editingPost.conteudo}
-                    onChange={e => setEditingPost({ ...editingPost, conteudo: e.target.value })}
+                    onChange={(e) => setEditingPost({ ...editingPost, conteudo: e.target.value })}
                     className="w-full bg-brand-surface border border-brand-border rounded-xl px-4 py-3 text-brand-text text-sm font-mono focus:outline-none focus:border-brand-accent transition-colors"
                     placeholder="<h2>Introdução</h2><p>Texto do parágrafo...</p>"
                   />
@@ -643,11 +763,11 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
                   </h4>
                   <SingleImageUpload
                     value={editingPost.fotoDestaque || ''}
-                    onChange={url => setEditingPost({ ...editingPost, fotoDestaque: url })}
+                    onChange={(url) => setEditingPost({ ...editingPost, fotoDestaque: url })}
                     onRemove={() => setEditingPost({ ...editingPost, fotoDestaque: null })}
                     label="Selecionar imagem destacada"
                   />
-                  
+
                   {/* Fallback button if available */}
                   {fallbackImages.length > 0 && (
                     <button
@@ -692,34 +812,46 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
                     <Sparkles className="size-4 text-brand-accent" />
                     Configurações de SEO
                   </h4>
-                  
+
                   <div className="space-y-3">
                     <div className="space-y-1">
-                      <label className="block text-[10px] font-bold text-brand-muted uppercase">SEO Title</label>
+                      <label className="block text-[10px] font-bold text-brand-muted uppercase">
+                        SEO Title
+                      </label>
                       <input
                         type="text"
                         value={editingPost.seoTitle || ''}
-                        onChange={e => setEditingPost({ ...editingPost, seoTitle: e.target.value })}
+                        onChange={(e) =>
+                          setEditingPost({ ...editingPost, seoTitle: e.target.value })
+                        }
                         className="w-full bg-brand-surface border border-brand-border rounded-lg px-3 py-1.5 text-brand-text text-xs focus:outline-none focus:border-brand-accent"
                         placeholder="Título da página no Google"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="block text-[10px] font-bold text-brand-muted uppercase">SEO Description</label>
+                      <label className="block text-[10px] font-bold text-brand-muted uppercase">
+                        SEO Description
+                      </label>
                       <textarea
                         rows={2}
                         value={editingPost.seoDescription || ''}
-                        onChange={e => setEditingPost({ ...editingPost, seoDescription: e.target.value })}
+                        onChange={(e) =>
+                          setEditingPost({ ...editingPost, seoDescription: e.target.value })
+                        }
                         className="w-full bg-brand-surface border border-brand-border rounded-lg px-3 py-1.5 text-brand-text text-xs focus:outline-none focus:border-brand-accent resize-none"
                         placeholder="Meta description de no máximo 155 caracteres"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="block text-[10px] font-bold text-brand-muted uppercase">SEO Keywords (foco)</label>
+                      <label className="block text-[10px] font-bold text-brand-muted uppercase">
+                        SEO Keywords (foco)
+                      </label>
                       <input
                         type="text"
                         value={editingPost.seoKeywords || ''}
-                        onChange={e => setEditingPost({ ...editingPost, seoKeywords: e.target.value })}
+                        onChange={(e) =>
+                          setEditingPost({ ...editingPost, seoKeywords: e.target.value })
+                        }
                         className="w-full bg-brand-surface border border-brand-border rounded-lg px-3 py-1.5 text-brand-text text-xs focus:outline-none focus:border-brand-accent"
                         placeholder="Festa infantil SJC, aluguel de brinquedos"
                       />
@@ -731,7 +863,7 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
                 <div className="rounded-xl border border-brand-border p-4 bg-brand-surface space-y-4 shadow-sm">
                   <h4 className="font-bold text-xs text-brand-muted uppercase">Publicação</h4>
                   <div className="flex border border-brand-border rounded-lg overflow-hidden shrink-0 bg-brand-surface-2">
-                    {(['rascunho', 'publicado'] as const).map(s => (
+                    {(['rascunho', 'publicado'] as const).map((s) => (
                       <button
                         key={s}
                         type="button"
@@ -739,7 +871,9 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
                         className={cn(
                           'flex-1 px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer',
                           editingPost.status === s
-                            ? s === 'publicado' ? 'bg-emerald-500 text-white font-bold' : 'bg-brand-accent text-white font-bold'
+                            ? s === 'publicado'
+                              ? 'bg-emerald-500 text-white font-bold'
+                              : 'bg-brand-accent text-white font-bold'
                             : 'text-brand-muted hover:text-brand-text hover:bg-brand-surface'
                         )}
                       >
@@ -775,7 +909,9 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
               Adicionar à Galeria Fallback
             </h3>
             <p className="text-xs text-brand-muted leading-relaxed">
-              Faça upload de fotos genéricas de alta qualidade sobre festas, brinquedos infláveis ou eventos. Se um artigo for publicado sem uma imagem destacada, o sistema sorteará aleatoriamente uma dessas fotos para atuar como capa automaticamente!
+              Faça upload de fotos genéricas de alta qualidade sobre festas, brinquedos infláveis ou
+              eventos. Se um artigo for publicado sem uma imagem destacada, o sistema sorteará
+              aleatoriamente uma dessas fotos para atuar como capa automaticamente!
             </p>
             <div className="pt-2">
               <SingleImageUpload
@@ -801,13 +937,20 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
             {fallbackImages.length === 0 ? (
               <div className="text-center py-16 text-brand-muted border-2 border-dashed border-brand-border rounded-xl">
                 <ImageIcon className="size-8 opacity-40 mx-auto mb-2" />
-                <span className="text-sm font-semibold text-brand-text block">Galeria Fallback Vazia</span>
-                <p className="text-xs text-brand-muted mt-1">Envie fotos no painel lateral esquerdo.</p>
+                <span className="text-sm font-semibold text-brand-text block">
+                  Galeria Fallback Vazia
+                </span>
+                <p className="text-xs text-brand-muted mt-1">
+                  Envie fotos no painel lateral esquerdo.
+                </p>
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {fallbackImages.map((imgUrl, i) => (
-                  <div key={i} className="relative rounded-xl border border-brand-border overflow-hidden aspect-video bg-brand-surface-2 group">
+                  <div
+                    key={i}
+                    className="relative rounded-xl border border-brand-border overflow-hidden aspect-video bg-brand-surface-2 group"
+                  >
                     <img src={imgUrl} className="w-full h-full object-cover" alt="" />
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-xs">
                       <button
@@ -837,17 +980,20 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
                 Gerador Instantâneo via IA
               </h3>
               <p className="text-xs text-brand-muted leading-relaxed">
-                Insira um tema e a IA criará o artigo na hora. Você poderá revisar, ajustar a capa e decidir se publica ou salva como rascunho.
+                Insira um tema e a IA criará o artigo na hora. Você poderá revisar, ajustar a capa e
+                decidir se publica ou salva como rascunho.
               </p>
-              
+
               <form onSubmit={handleAIGenerate} className="space-y-3 pt-2">
                 <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-brand-muted uppercase">Palavra-chave / Tema do Artigo</label>
+                  <label className="block text-xs font-semibold text-brand-muted uppercase">
+                    Palavra-chave / Tema do Artigo
+                  </label>
                   <input
                     type="text"
                     required
                     value={generationKeyword}
-                    onChange={e => setGenerationKeyword(e.target.value)}
+                    onChange={(e) => setGenerationKeyword(e.target.value)}
                     className="w-full bg-brand-surface border border-brand-border rounded-xl px-3.5 py-2 text-brand-text text-sm focus:outline-none focus:border-brand-accent transition-colors"
                     placeholder="Ex: Como planejar um aniversário infantil..."
                   />
@@ -865,24 +1011,38 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
 
             {/* Bloco Fila Cron Automático */}
             <div className="rounded-2xl border border-brand-border bg-brand-surface p-5 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3">
                 <h3 className="text-base font-bold text-brand-text flex items-center gap-2">
                   <ListOrdered className="size-5 text-brand-accent" />
                   Fila de Temas (Autopilot / Cron)
                 </h3>
-                <button
-                  type="button"
-                  onClick={handleFetchSuggestions}
-                  disabled={isFetchingSuggestions}
-                  className="inline-flex items-center gap-1.5 text-[11px] bg-brand-accent/10 border border-brand-accent/25 hover:bg-brand-accent/20 text-brand-accent font-bold px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
-                  title="Sugerir ideias de pautas com IA"
-                >
-                  <Lightbulb className="size-3.5" />
-                  Sugerir Temas (IA)
-                </button>
+                <div className="flex gap-2 w-full">
+                  <button
+                    type="button"
+                    onClick={handleFetchSuggestions}
+                    disabled={isFetchingSuggestions}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs bg-brand-accent/10 border border-brand-accent/20 hover:bg-brand-accent/25 text-brand-accent font-bold py-2 rounded-lg transition-colors cursor-pointer"
+                    title="Sugerir ideias de pautas com IA"
+                  >
+                    <Lightbulb className="size-3.5" />
+                    Sugerir Temas
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAutoGenerateQueue}
+                    disabled={savingQueue}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs bg-brand-accent hover:bg-brand-accent/90 text-white font-bold py-2 rounded-lg transition-colors cursor-pointer shadow-sm"
+                    title="Gerar e adicionar temas automaticamente na fila via IA"
+                  >
+                    <RefreshCw className={cn("size-3.5", savingQueue && "animate-spin")} />
+                    Gerar Fila (IA)
+                  </button>
+                </div>
               </div>
               <p className="text-xs text-brand-muted leading-relaxed">
-                Adicione temas na fila abaixo. O cron de automação diário consumirá o primeiro tema e publicará o artigo automaticamente. <strong>Se a fila esvaziar, o Autopilot criará temas inéditos sozinho!</strong>
+                Adicione temas na fila abaixo. O cron de automação diário consumirá o primeiro tema
+                e publicará o artigo automaticamente.{' '}
+                <strong>Se a fila esvaziar, o Autopilot criará temas inéditos sozinho!</strong>
               </p>
 
               <form onSubmit={handleAddQueueKeyword} className="space-y-2">
@@ -891,7 +1051,7 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
                     type="text"
                     required
                     value={newQueueKeyword}
-                    onChange={e => setNewQueueKeyword(e.target.value)}
+                    onChange={(e) => setNewQueueKeyword(e.target.value)}
                     disabled={savingQueue}
                     className="flex-1 bg-brand-surface border border-brand-border rounded-xl px-3 py-1.5 text-brand-text text-xs focus:outline-none focus:border-brand-accent"
                     placeholder="Novo tema para fila..."
@@ -901,21 +1061,31 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
                     disabled={savingQueue || !newQueueKeyword.trim()}
                     className="bg-brand-surface-2 border border-brand-border hover:border-brand-accent/50 text-brand-text font-bold text-xs px-3 rounded-xl transition-colors cursor-pointer"
                   >
-                    {savingQueue ? <Loader2 className="size-3 animate-spin" /> : <Plus className="size-3.5" />}
+                    {savingQueue ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      <Plus className="size-3.5" />
+                    )}
                   </button>
                 </div>
               </form>
 
               <div className="space-y-2 pt-2 border-t border-brand-border/60">
-                <h4 className="text-[11px] font-bold text-brand-muted uppercase">Próximas publicações ({keywordQueue.length}):</h4>
+                <h4 className="text-[11px] font-bold text-brand-muted uppercase">
+                  Próximas publicações ({keywordQueue.length}):
+                </h4>
                 {keywordQueue.length === 0 ? (
                   <p className="text-[11px] text-amber-500 bg-amber-500/5 border border-amber-500/10 rounded-lg p-2 leading-relaxed">
-                    Fila vazia! O Autopilot de IA está ativo e escolherá tópicos de forma 100% autônoma nas próximas execuções.
+                    Fila vazia! O Autopilot de IA está ativo e escolherá tópicos de forma 100%
+                    autônoma nas próximas execuções.
                   </p>
                 ) : (
                   <div className="max-h-[200px] overflow-y-auto space-y-1.5 scrollbar-thin pr-1">
                     {keywordQueue.map((keyword, i) => (
-                      <div key={i} className="flex items-center justify-between gap-2 bg-brand-surface-2/40 border border-brand-border/60 rounded-lg px-2.5 py-1.5 text-xs">
+                      <div
+                        key={i}
+                        className="flex items-center justify-between gap-2 bg-brand-surface-2/40 border border-brand-border/60 rounded-lg px-2.5 py-1.5 text-xs"
+                      >
                         <span className="truncate font-medium text-brand-text">
                           {i + 1}. {keyword}
                         </span>
@@ -947,7 +1117,7 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
                   <input
                     type="text"
                     value={busca}
-                    onChange={e => setBusca(e.target.value)}
+                    onChange={(e) => setBusca(e.target.value)}
                     className="w-full bg-brand-surface border border-brand-border rounded-xl pl-9 pr-3 py-2 text-brand-text placeholder:text-brand-muted text-sm focus:outline-none focus:border-brand-accent transition-colors"
                     placeholder="Buscar por título ou categoria..."
                   />
@@ -955,7 +1125,7 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
 
                 {/* Filtro Status */}
                 <div className="flex border border-brand-border rounded-lg overflow-hidden shrink-0 bg-brand-surface-2">
-                  {(['todos', 'rascunho', 'publicado'] as const).map(s => (
+                  {(['todos', 'rascunho', 'publicado'] as const).map((s) => (
                     <button
                       key={s}
                       type="button"
@@ -987,8 +1157,8 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
                 >
                   Todas
                 </button>
-                {CATEGORIES.map(cat => {
-                  const count = posts.filter(p => p.categoria === cat).length
+                {CATEGORIES.map((cat) => {
+                  const count = posts.filter((p) => p.categoria === cat).length
                   if (count === 0) return null
                   return (
                     <button
@@ -1003,7 +1173,16 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
                       )}
                     >
                       {cat}
-                      <span className={cn('text-[9px] font-mono px-1 rounded', categoriaFiltro === cat ? 'bg-white/20' : 'bg-brand-surface border border-brand-border')}>{count}</span>
+                      <span
+                        className={cn(
+                          'text-[9px] font-mono px-1 rounded',
+                          categoriaFiltro === cat
+                            ? 'bg-white/20'
+                            : 'bg-brand-surface border border-brand-border'
+                        )}
+                      >
+                        {count}
+                      </span>
                     </button>
                   )
                 })}
@@ -1016,11 +1195,21 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
                 <table className="w-full text-left border-collapse text-sm">
                   <thead>
                     <tr className="bg-brand-surface-2 border-b border-brand-border">
-                      <th className="p-4 font-bold text-brand-muted text-xs uppercase tracking-wider">Artigo / Categoria</th>
-                      <th className="p-4 font-bold text-brand-muted text-xs uppercase tracking-wider w-24 text-center">Tempo</th>
-                      <th className="p-4 font-bold text-brand-muted text-xs uppercase tracking-wider w-24 text-center">Leituras</th>
-                      <th className="p-4 font-bold text-brand-muted text-xs uppercase tracking-wider w-28 text-center">Status</th>
-                      <th className="p-4 font-bold text-brand-muted text-xs uppercase tracking-wider w-28 text-right">Ações</th>
+                      <th className="p-4 font-bold text-brand-muted text-xs uppercase tracking-wider">
+                        Artigo / Categoria
+                      </th>
+                      <th className="p-4 font-bold text-brand-muted text-xs uppercase tracking-wider w-24 text-center">
+                        Tempo
+                      </th>
+                      <th className="p-4 font-bold text-brand-muted text-xs uppercase tracking-wider w-24 text-center">
+                        Leituras
+                      </th>
+                      <th className="p-4 font-bold text-brand-muted text-xs uppercase tracking-wider w-28 text-center">
+                        Status
+                      </th>
+                      <th className="p-4 font-bold text-brand-muted text-xs uppercase tracking-wider w-28 text-right">
+                        Ações
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-brand-border">
@@ -1030,26 +1219,40 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
                           <div className="flex flex-col items-center justify-center space-y-4">
                             <AlertCircle className="size-8 text-brand-muted opacity-40 animate-pulse" />
                             <div>
-                              <span className="text-sm font-semibold text-brand-text block">Nenhum artigo encontrado</span>
-                              <p className="text-xs text-brand-muted mt-1">Crie um novo artigo manual ou use o gerador por IA.</p>
+                              <span className="text-sm font-semibold text-brand-text block">
+                                Nenhum artigo encontrado
+                              </span>
+                              <p className="text-xs text-brand-muted mt-1">
+                                Crie um novo artigo manual ou use o gerador por IA.
+                              </p>
                             </div>
                           </div>
                         </td>
                       </tr>
                     ) : (
-                      filteredPosts.map(post => (
+                      filteredPosts.map((post) => (
                         <tr key={post.id} className="hover:bg-brand-surface-2/40 transition-colors">
                           <td className="p-4 max-w-[280px]">
                             <div className="flex items-center gap-3">
                               {post.fotoDestaque ? (
-                                <img src={post.fotoDestaque} className="size-10 rounded-lg object-cover border border-brand-border shrink-0" alt="" />
+                                <img
+                                  src={post.fotoDestaque}
+                                  className="size-10 rounded-lg object-cover border border-brand-border shrink-0"
+                                  alt=""
+                                />
                               ) : (
                                 <div className="size-10 rounded-lg bg-brand-surface-2 border border-brand-border shrink-0 flex items-center justify-center text-brand-muted">
                                   <ImageIcon className="size-4" />
                                 </div>
                               )}
                               <div className="truncate">
-                                <span className="font-extrabold text-brand-text hover:text-brand-accent transition-colors cursor-pointer truncate block" onClick={() => { setEditingPost(post); setIsEditing(true); }}>
+                                <span
+                                  className="font-extrabold text-brand-text hover:text-brand-accent transition-colors cursor-pointer truncate block"
+                                  onClick={() => {
+                                    setEditingPost(post)
+                                    setIsEditing(true)
+                                  }}
+                                >
                                   {post.titulo}
                                 </span>
                                 <span className="text-xs text-brand-muted mt-0.5 inline-flex items-center gap-1">
@@ -1066,12 +1269,14 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
                             {post.visualizacoes}
                           </td>
                           <td className="p-4 text-center">
-                            <span className={cn(
-                              'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border',
-                              post.status === 'publicado'
-                                ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-500'
-                                : 'bg-brand-muted/10 border-brand-border text-brand-muted'
-                            )}>
+                            <span
+                              className={cn(
+                                'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border',
+                                post.status === 'publicado'
+                                  ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-500'
+                                  : 'bg-brand-muted/10 border-brand-border text-brand-muted'
+                              )}
+                            >
                               {post.status === 'publicado' ? 'Publicado' : 'Rascunho'}
                             </span>
                           </td>
@@ -1080,7 +1285,10 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
                               <button
                                 type="button"
                                 title="Editar"
-                                onClick={() => { setEditingPost(post); setIsEditing(true); }}
+                                onClick={() => {
+                                  setEditingPost(post)
+                                  setIsEditing(true)
+                                }}
                                 className="size-8 rounded-lg bg-brand-surface-2 border border-brand-border text-brand-muted hover:text-brand-accent hover:border-brand-accent/30 flex items-center justify-center transition-all cursor-pointer"
                               >
                                 <Edit3 className="size-3.5" />
@@ -1132,8 +1340,12 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
                   <Lightbulb className="size-5 animate-pulse" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-brand-text text-base">Ideias de Pautas Sugeridas por IA</h3>
-                  <p className="text-brand-muted text-xs mt-0.5">Sugestões de pautas baseadas no seu blog para atrair clientes de SJC.</p>
+                  <h3 className="font-extrabold text-brand-text text-base">
+                    Ideias de Pautas Sugeridas por IA
+                  </h3>
+                  <p className="text-brand-muted text-xs mt-0.5">
+                    Sugestões de pautas baseadas no seu blog para atrair clientes de SJC.
+                  </p>
                 </div>
               </div>
               <button
@@ -1150,15 +1362,24 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
                 <div className="flex flex-col items-center justify-center py-20 space-y-4">
                   <Loader2 className="size-10 text-brand-accent animate-spin" />
                   <div className="text-center">
-                    <span className="font-bold text-sm text-brand-text block">Gerando Sugestões Exclusivas...</span>
-                    <p className="text-xs text-brand-muted mt-1">Nossa IA está analisando seus artigos escritos e elaborando novas pautas locais.</p>
+                    <span className="font-bold text-sm text-brand-text block">
+                      Gerando Sugestões Exclusivas...
+                    </span>
+                    <p className="text-xs text-brand-muted mt-1">
+                      Nossa IA está analisando seus artigos escritos e elaborando novas pautas
+                      locais.
+                    </p>
                   </div>
                 </div>
               ) : suggestions.length === 0 ? (
                 <div className="text-center py-16 text-brand-muted">
                   <AlertCircle className="size-8 mx-auto mb-2 text-brand-muted opacity-45" />
-                  <span className="font-semibold text-sm text-brand-text block">Nenhuma sugestão encontrada</span>
-                  <p className="text-xs text-brand-muted mt-1">Por favor, tente gerar novamente ou verifique as configurações de IA.</p>
+                  <span className="font-semibold text-sm text-brand-text block">
+                    Nenhuma sugestão encontrada
+                  </span>
+                  <p className="text-xs text-brand-muted mt-1">
+                    Por favor, tente gerar novamente ou verifique as configurações de IA.
+                  </p>
                   <button
                     onClick={handleFetchSuggestions}
                     className="mt-4 inline-flex items-center gap-1.5 bg-brand-accent hover:bg-brand-accent/90 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition-all cursor-pointer"
@@ -1185,7 +1406,8 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
                               {sug.tituloSugerido}
                             </h4>
                             <p className="text-xs text-brand-muted mt-1 font-mono">
-                              Palavra-chave: <span className="text-brand-text font-semibold">{sug.tema}</span>
+                              Palavra-chave:{' '}
+                              <span className="text-brand-text font-semibold">{sug.tema}</span>
                             </p>
                           </div>
                         </div>
@@ -1202,7 +1424,7 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
                             <Sparkles className="size-3.5" />
                             Gerar Artigo Agora
                           </button>
-                          
+
                           <button
                             onClick={() => handleAddSuggestionToQueue(sug.tema)}
                             disabled={isAlreadyQueued || savingQueue}
@@ -1213,7 +1435,11 @@ export function BlogManagement({ initialPosts, initialFallbackImages, initialKey
                                 : 'bg-brand-surface border-brand-border hover:border-brand-accent/50 text-brand-text hover:bg-brand-surface-2'
                             )}
                           >
-                            {isAlreadyQueued ? <Check className="size-3.5" /> : <Plus className="size-3.5 text-brand-accent" />}
+                            {isAlreadyQueued ? (
+                              <Check className="size-3.5" />
+                            ) : (
+                              <Plus className="size-3.5 text-brand-accent" />
+                            )}
                             {isAlreadyQueued ? 'Adicionado à Fila' : 'Adicionar à Fila'}
                           </button>
                         </div>
@@ -1273,7 +1499,12 @@ function FlagToggle({ icon: Icon, titulo, descricao, ativo, salvando, onToggle }
   return (
     <div className="flex items-start justify-between p-3.5 rounded-lg border border-brand-border bg-brand-surface-2/30">
       <div className="flex gap-3">
-        <span className={cn('flex items-center justify-center size-8 rounded-lg shrink-0 border border-brand-border bg-brand-surface', ativo ? 'text-brand-accent' : 'text-brand-muted')}>
+        <span
+          className={cn(
+            'flex items-center justify-center size-8 rounded-lg shrink-0 border border-brand-border bg-brand-surface',
+            ativo ? 'text-brand-accent' : 'text-brand-muted'
+          )}
+        >
           <Icon className="size-4" />
         </span>
         <div>

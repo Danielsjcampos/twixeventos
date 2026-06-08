@@ -1,4 +1,4 @@
-export const CURRENT_VERSION = '1.8.0'
+export const CURRENT_VERSION = '1.8.1'
 
 export type ChangeType = 'feature' | 'fix' | 'improvement' | 'security'
 
@@ -16,16 +16,61 @@ export interface Version {
 
 export const CHANGELOG: Version[] = [
   {
+    version: '1.8.1',
+    date: '2026-06-08',
+    title: 'GSC Tag Integration, Offline Autopilot & Theme Queue Generator',
+    changes: [
+      {
+        type: 'feature',
+        text: 'Novo botão "Gerar Fila (IA)" no painel administrativo do blog para adicionar temas sugeridos à fila de publicação com um único clique.',
+      },
+      {
+        type: 'improvement',
+        text: 'Inserção de campo para tag de verificação do Google Search Console na aba Sitemap / GSC do painel de configurações.',
+      },
+      {
+        type: 'improvement',
+        text: 'Renderização dinâmica de metadados na raiz do site que lê e extrai o código do Search Console do banco de dados (suportando meta tag completa ou apenas o token).',
+      },
+      {
+        type: 'fix',
+        text: 'Resiliência offline completa no piloto automático do blog: o sistema gera artigos locais e sugestões a partir de templates ricos integrados caso as APIs de IA estejam offline ou inacessíveis.',
+      },
+      {
+        type: 'fix',
+        text: 'Piloto automático do blog agora prioriza automaticamente as imagens da galeria de fallback do blog antes de tentar gerar imagens via DALL-E.',
+      },
+    ],
+  },
+  {
     version: '1.8.0',
     date: '2026-06-07',
     title: 'AI Blog System, Standalone Uploads Service & Sitemap Integration',
     changes: [
-      { type: 'feature', text: 'Novo sistema de blog inteligente com IA no painel administrativo, contendo gerenciador de fila de palavras-chave e sugestões automáticas de tópicos.' },
-      { type: 'feature', text: 'Integração de Cron diário para auto-geração de artigos e adição de meta tag de verificação do Google Search Console.' },
-      { type: 'fix', text: 'Criação de rota de serviço dinâmica para servir uploads em Next standalone (resolvendo ausência de arquivos estáticos dinâmicos em produção autohospedada).' },
-      { type: 'fix', text: 'Correção de erro 500 no carregamento da página de blog causado pela desserialização de campos de data dentro do unstable_cache.' },
-      { type: 'fix', text: 'Sincronização automática do sitemap para incluir dinamicamente a página principal do blog e todos os artigos publicados.' },
-      { type: 'improvement', text: 'Adicionado teste de carregamento de blog na suíte de testes de regressão do Playwright.' },
+      {
+        type: 'feature',
+        text: 'Novo sistema de blog inteligente com IA no painel administrativo, contendo gerenciador de fila de palavras-chave e sugestões automáticas de tópicos.',
+      },
+      {
+        type: 'feature',
+        text: 'Integração de Cron diário para auto-geração de artigos e adição de meta tag de verificação do Google Search Console.',
+      },
+      {
+        type: 'fix',
+        text: 'Criação de rota de serviço dinâmica para servir uploads em Next standalone (resolvendo ausência de arquivos estáticos dinâmicos em produção autohospedada).',
+      },
+      {
+        type: 'fix',
+        text: 'Correção de erro 500 no carregamento da página de blog causado pela desserialização de campos de data dentro do unstable_cache.',
+      },
+      {
+        type: 'fix',
+        text: 'Sincronização automática do sitemap para incluir dinamicamente a página principal do blog e todos os artigos publicados.',
+      },
+      {
+        type: 'improvement',
+        text: 'Adicionado teste de carregamento de blog na suíte de testes de regressão do Playwright.',
+      },
     ],
   },
   {
@@ -33,8 +78,14 @@ export const CHANGELOG: Version[] = [
     date: '2026-05-30',
     title: 'YouTube Shorts Support in Toy Catalog',
     changes: [
-      { type: 'fix', text: 'Suporte a vídeos de formato YouTube Shorts no catálogo de brinquedos (página de detalhes, preview administrativo e apresentação).' },
-      { type: 'improvement', text: 'Centralização da lógica de extração de IDs do YouTube com utilitário robusto compartilhado em utils.ts.' },
+      {
+        type: 'fix',
+        text: 'Suporte a vídeos de formato YouTube Shorts no catálogo de brinquedos (página de detalhes, preview administrativo e apresentação).',
+      },
+      {
+        type: 'improvement',
+        text: 'Centralização da lógica de extração de IDs do YouTube com utilitário robusto compartilhado em utils.ts.',
+      },
     ],
   },
   {
@@ -42,11 +93,26 @@ export const CHANGELOG: Version[] = [
     date: '2026-05-29',
     title: 'CRM Lead Deletion & Enhanced Event Customization',
     changes: [
-      { type: 'feature', text: 'Botão para excluir permanentemente um lead do CRM com popup de confirmação no painel administrativo.' },
-      { type: 'feature', text: 'Suporte a múltiplos brinquedos contratados por festa/evento (pesquisa e badges interativos).' },
-      { type: 'feature', text: 'Suporte a valores extras avulsos personalizados (com descrição e preço avulso) integrados no cálculo da festa.' },
-      { type: 'improvement', text: 'Calculadora integrada de valor total, sinal, forma de pagamento e valor restante em tempo real para novos eventos e conversões rápidas de leads.' },
-      { type: 'improvement', text: 'Visualização completa dos brinquedos contratados e valores extras avulsos no painel expandido de detalhes do evento.' },
+      {
+        type: 'feature',
+        text: 'Botão para excluir permanentemente um lead do CRM com popup de confirmação no painel administrativo.',
+      },
+      {
+        type: 'feature',
+        text: 'Suporte a múltiplos brinquedos contratados por festa/evento (pesquisa e badges interativos).',
+      },
+      {
+        type: 'feature',
+        text: 'Suporte a valores extras avulsos personalizados (com descrição e preço avulso) integrados no cálculo da festa.',
+      },
+      {
+        type: 'improvement',
+        text: 'Calculadora integrada de valor total, sinal, forma de pagamento e valor restante em tempo real para novos eventos e conversões rápidas de leads.',
+      },
+      {
+        type: 'improvement',
+        text: 'Visualização completa dos brinquedos contratados e valores extras avulsos no painel expandido de detalhes do evento.',
+      },
     ],
   },
   {
@@ -54,8 +120,14 @@ export const CHANGELOG: Version[] = [
     date: '2026-05-28',
     title: 'Ajuste no CinematicHero: exibição de estrelas e avaliações',
     changes: [
-      { type: 'improvement', text: 'Inversão do layout na seção "Excelência Comprovada": agora exibe as 5 Estrelas no centro do círculo (mockup de celular) e a contagem total de "455 Avaliações" no retângulo flutuante superior.' },
-      { type: 'fix', text: 'Remoção de variáveis não utilizadas e simplificação das animações GSAP associadas ao componente CinematicHero para garantir compatibilidade no build.' },
+      {
+        type: 'improvement',
+        text: 'Inversão do layout na seção "Excelência Comprovada": agora exibe as 5 Estrelas no centro do círculo (mockup de celular) e a contagem total de "455 Avaliações" no retângulo flutuante superior.',
+      },
+      {
+        type: 'fix',
+        text: 'Remoção de variáveis não utilizadas e simplificação das animações GSAP associadas ao componente CinematicHero para garantir compatibilidade no build.',
+      },
     ],
   },
   {
@@ -63,11 +135,23 @@ export const CHANGELOG: Version[] = [
     date: '2026-05-18',
     title: 'Imagens 100% no banco — adeus Vercel Blob, CORS e SDK quebrado',
     changes: [
-      { type: 'fix', text: 'Upload de fotos agora é 100% client-side: converte para WebP via Canvas API e salva como base64 data URL direto no PostgreSQL' },
+      {
+        type: 'fix',
+        text: 'Upload de fotos agora é 100% client-side: converte para WebP via Canvas API e salva como base64 data URL direto no PostgreSQL',
+      },
       { type: 'fix', text: 'Resolve definitivamente o erro CORS / 400 do Vercel Blob em produção' },
-      { type: 'improvement', text: 'Removida toda a infraestrutura de upload externo (Vercel Blob, sharp em runtime, /api/upload)' },
-      { type: 'improvement', text: 'Funciona idêntico em localhost e em produção — sem variáveis de ambiente, sem tokens, sem buckets' },
-      { type: 'improvement', text: 'WebP no browser continua reduzindo o tamanho da imagem em 60–80% antes de salvar' },
+      {
+        type: 'improvement',
+        text: 'Removida toda a infraestrutura de upload externo (Vercel Blob, sharp em runtime, /api/upload)',
+      },
+      {
+        type: 'improvement',
+        text: 'Funciona idêntico em localhost e em produção — sem variáveis de ambiente, sem tokens, sem buckets',
+      },
+      {
+        type: 'improvement',
+        text: 'WebP no browser continua reduzindo o tamanho da imagem em 60–80% antes de salvar',
+      },
     ],
   },
   {
@@ -75,11 +159,26 @@ export const CHANGELOG: Version[] = [
     date: '2026-05-18',
     title: 'Upload direto para Vercel Blob (cliente → storage)',
     changes: [
-      { type: 'fix', text: 'Upload de imagens migrado para o padrão recomendado da Vercel: navegador envia direto para o Blob via @vercel/blob/client, bypassando a função serverless' },
-      { type: 'improvement', text: 'Sem mais limite de 4.5MB do body da serverless — aceita até 20MB' },
-      { type: 'improvement', text: 'Conversão para WebP continua acontecendo no browser (Canvas API), economizando 60-80% de espaço' },
-      { type: 'improvement', text: 'Fallback automático para filesystem em desenvolvimento (sem necessidade do Vercel Blob local)' },
-      { type: 'improvement', text: 'Logs detalhados de economia de espaço e tempo de upload no console do navegador' },
+      {
+        type: 'fix',
+        text: 'Upload de imagens migrado para o padrão recomendado da Vercel: navegador envia direto para o Blob via @vercel/blob/client, bypassando a função serverless',
+      },
+      {
+        type: 'improvement',
+        text: 'Sem mais limite de 4.5MB do body da serverless — aceita até 20MB',
+      },
+      {
+        type: 'improvement',
+        text: 'Conversão para WebP continua acontecendo no browser (Canvas API), economizando 60-80% de espaço',
+      },
+      {
+        type: 'improvement',
+        text: 'Fallback automático para filesystem em desenvolvimento (sem necessidade do Vercel Blob local)',
+      },
+      {
+        type: 'improvement',
+        text: 'Logs detalhados de economia de espaço e tempo de upload no console do navegador',
+      },
     ],
   },
   {
@@ -87,10 +186,22 @@ export const CHANGELOG: Version[] = [
     date: '2026-05-18',
     title: 'Correção crítica de upload de imagens em produção',
     changes: [
-      { type: 'fix', text: 'Adicionado `serverExternalPackages: [\'sharp\']` no next.config.ts — corrige erro 500 ao fazer upload no Vercel (sharp é binário nativo e não pode ser bundled)' },
-      { type: 'fix', text: 'Hostname `*.public.blob.vercel-storage.com` adicionado aos remotePatterns do Next.js Image para exibir fotos salvas no Vercel Blob' },
-      { type: 'feature', text: 'Histórico de versões adicionado ao painel admin com timeline completa' },
-      { type: 'feature', text: 'Badge de versão atual visível na sidebar do admin com link para o changelog' },
+      {
+        type: 'fix',
+        text: "Adicionado `serverExternalPackages: ['sharp']` no next.config.ts — corrige erro 500 ao fazer upload no Vercel (sharp é binário nativo e não pode ser bundled)",
+      },
+      {
+        type: 'fix',
+        text: 'Hostname `*.public.blob.vercel-storage.com` adicionado aos remotePatterns do Next.js Image para exibir fotos salvas no Vercel Blob',
+      },
+      {
+        type: 'feature',
+        text: 'Histórico de versões adicionado ao painel admin com timeline completa',
+      },
+      {
+        type: 'feature',
+        text: 'Badge de versão atual visível na sidebar do admin com link para o changelog',
+      },
     ],
   },
   {
@@ -98,12 +209,30 @@ export const CHANGELOG: Version[] = [
     date: '2026-05-18',
     title: 'CRM inteligente + captura de leads pelo WhatsApp',
     changes: [
-      { type: 'feature', text: 'Botão flutuante do WhatsApp agora exibe mini-formulário de captura (nome + telefone) antes de abrir o chat' },
-      { type: 'feature', text: 'Lead registrado automaticamente no CRM ao preencher o formulário do botão WhatsApp' },
-      { type: 'feature', text: 'Cliente cadastrado automaticamente no módulo Clientes ao criar um novo lead no CRM' },
-      { type: 'feature', text: 'Evento confirmado sincroniza o cliente no módulo Clientes (histórico de festas atualizado)' },
-      { type: 'improvement', text: 'Formulário de brinquedos (ToyForm) reformulado: campos com fundo correto, toggle switches, seções organizadas' },
-      { type: 'feature', text: 'Crédito de desenvolvedor adicionado no rodapé: Daniel Marques · 2TimeWeb' },
+      {
+        type: 'feature',
+        text: 'Botão flutuante do WhatsApp agora exibe mini-formulário de captura (nome + telefone) antes de abrir o chat',
+      },
+      {
+        type: 'feature',
+        text: 'Lead registrado automaticamente no CRM ao preencher o formulário do botão WhatsApp',
+      },
+      {
+        type: 'feature',
+        text: 'Cliente cadastrado automaticamente no módulo Clientes ao criar um novo lead no CRM',
+      },
+      {
+        type: 'feature',
+        text: 'Evento confirmado sincroniza o cliente no módulo Clientes (histórico de festas atualizado)',
+      },
+      {
+        type: 'improvement',
+        text: 'Formulário de brinquedos (ToyForm) reformulado: campos com fundo correto, toggle switches, seções organizadas',
+      },
+      {
+        type: 'feature',
+        text: 'Crédito de desenvolvedor adicionado no rodapé: Daniel Marques · 2TimeWeb',
+      },
     ],
   },
   {
@@ -111,12 +240,30 @@ export const CHANGELOG: Version[] = [
     date: '2026-05-17',
     title: 'Upload de imagens com WebP + correção Vercel',
     changes: [
-      { type: 'fix', text: 'Adicionado `sharp` como dependência direta no package.json (corrige falha no Vercel)' },
-      { type: 'fix', text: 'Adicionado `serverExternalPackages: [\'sharp\']` no next.config.ts (corrige erro 500 no upload em produção)' },
-      { type: 'improvement', text: 'Rota de upload detecta se imagem já é WebP (convertida no browser) e evita dupla conversão' },
-      { type: 'improvement', text: 'Limite de upload aumentado para 20 MB com mensagem de erro clara' },
-      { type: 'feature', text: 'Log de economia de espaço exibido no console ao fazer upload (ex: 2MB → 400KB −80%)' },
-      { type: 'improvement', text: 'Hostname do Vercel Blob adicionado aos remotePatterns do Next.js Image' },
+      {
+        type: 'fix',
+        text: 'Adicionado `sharp` como dependência direta no package.json (corrige falha no Vercel)',
+      },
+      {
+        type: 'fix',
+        text: "Adicionado `serverExternalPackages: ['sharp']` no next.config.ts (corrige erro 500 no upload em produção)",
+      },
+      {
+        type: 'improvement',
+        text: 'Rota de upload detecta se imagem já é WebP (convertida no browser) e evita dupla conversão',
+      },
+      {
+        type: 'improvement',
+        text: 'Limite de upload aumentado para 20 MB com mensagem de erro clara',
+      },
+      {
+        type: 'feature',
+        text: 'Log de economia de espaço exibido no console ao fazer upload (ex: 2MB → 400KB −80%)',
+      },
+      {
+        type: 'improvement',
+        text: 'Hostname do Vercel Blob adicionado aos remotePatterns do Next.js Image',
+      },
     ],
   },
   {
@@ -124,12 +271,24 @@ export const CHANGELOG: Version[] = [
     date: '2026-05-17',
     title: 'Roleta de prêmios + cashback para clientes',
     changes: [
-      { type: 'feature', text: 'Roleta de prêmios na área do cliente com animação GSAP e confete canvas-confetti' },
-      { type: 'feature', text: 'Prêmios configuráveis pelo admin: valor fixo (R$) ou percentual do cashback total' },
-      { type: 'feature', text: 'Giros disponíveis calculados por: floor(cashbackTotal / mínimo) + giros bônus' },
+      {
+        type: 'feature',
+        text: 'Roleta de prêmios na área do cliente com animação GSAP e confete canvas-confetti',
+      },
+      {
+        type: 'feature',
+        text: 'Prêmios configuráveis pelo admin: valor fixo (R$) ou percentual do cashback total',
+      },
+      {
+        type: 'feature',
+        text: 'Giros disponíveis calculados por: floor(cashbackTotal / mínimo) + giros bônus',
+      },
       { type: 'feature', text: 'Admin pode dar giros bônus individuais para cada cliente' },
       { type: 'feature', text: 'Histórico de giros e prêmios ganhos visível na área do cliente' },
-      { type: 'fix', text: 'Prêmios da roleta creditam apenas cashback_saldo (não inflam cashback_total, evitando giros infinitos)' },
+      {
+        type: 'fix',
+        text: 'Prêmios da roleta creditam apenas cashback_saldo (não inflam cashback_total, evitando giros infinitos)',
+      },
       { type: 'feature', text: 'Confete disparado ao ganhar na roleta e ao resgatar cashback' },
       { type: 'improvement', text: 'Pesos configuráveis por prêmio para controle de raridade' },
     ],
@@ -139,7 +298,10 @@ export const CHANGELOG: Version[] = [
     date: '2026-05-13',
     title: 'Lançamento inicial do sistema',
     changes: [
-      { type: 'feature', text: 'Painel administrativo completo com dashboard, eventos, clientes, financeiro e configurações' },
+      {
+        type: 'feature',
+        text: 'Painel administrativo completo com dashboard, eventos, clientes, financeiro e configurações',
+      },
       { type: 'feature', text: 'CRM Kanban com drag-and-drop para gestão de leads' },
       { type: 'feature', text: 'Catálogo público de brinquedos com filtros por categoria' },
       { type: 'feature', text: 'Área do cliente com acesso via código TWX (sem login)' },

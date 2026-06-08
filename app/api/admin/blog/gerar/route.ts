@@ -2,27 +2,61 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/config'
 import { getConfig } from '@/lib/db/queries/configuracoes'
 import { notificarBuscadores } from '@/lib/seo/notificar'
+import { slugify } from '@/lib/utils'
 
 const PROVIDER_BASES: Record<string, string> = {
-  openai:       'https://api.openai.com/v1',
-  openrouter:   'https://openrouter.ai/api/v1',
-  groq:         'https://api.groq.com/openai/v1',
-  deepseek:     'https://api.deepseek.com/v1',
-  gemini:       'https://generativelanguage.googleapis.com/v1beta/openai',
-  anthropic:    '__anthropic__', // Handled separately
+  openai: 'https://api.openai.com/v1',
+  openrouter: 'https://openrouter.ai/api/v1',
+  groq: 'https://api.groq.com/openai/v1',
+  deepseek: 'https://api.deepseek.com/v1',
+  gemini: 'https://generativelanguage.googleapis.com/v1beta/openai',
+  anthropic: '__anthropic__', // Handled separately
+}
+
+function generateOfflinePost(keyword: string) {
+  const slug = slugify(keyword)
+  const category = 'Dicas de Festa'
+  const title = `Tudo sobre ${keyword} para seu Evento`
+  const excerpt = `Descubra as melhores dicas sobre ${keyword} em São José dos Campos e região para tornar sua festa inesquecível.`
+  
+  const conteudo = `
+<h2>Por que ${keyword} é a escolha ideal para seu evento?</h2>
+<p>Organizar uma festa infantil ou evento corporativo de sucesso exige atenção especial ao entretenimento. Ao optar por ${keyword} em São José dos Campos (SJC) e Vale do Paraíba, você garante diversão de alta qualidade e momentos memoráveis para todos os convidados.</p>
+<p>A Twix Eventos conta com uma equipe especializada e brinquedos novos, higienizados e totalmente seguros, garantindo a tranquilidade dos pais e a alegria da garotada.</p>
+
+<h2>Segurança e Qualidade em Primeiro Lugar</h2>
+<p>Ao planejar a locação de itens para festas, a segurança deve ser sua prioridade absoluta. Todos os nossos equipamentos passam por inspeções rigorosas e manutenção periódica. Nossa equipe faz a montagem profissional no local do evento, assegurando que tudo funcione perfeitamente do início ao fim.</p>
+<p>Seja aluguel de brinquedos infláveis, camas elásticas ou eletrônicos, cada item é projetado para oferecer a máxima diversão com segurança total.</p>
+
+<h2>Dicas para Planejar o Espaço do Evento</h2>
+<p>Antes de confirmar a reserva, é fundamental medir a área disponível no salão ou quintal. Certifique-se de que o local possui acesso fácil à energia elétrica e espaço suficiente para a circulação segura das crianças ao redor do brinquedo. Com um planejamento simples, seu evento será um verdadeiro sucesso!</p>
+  `.trim()
+
+  return {
+    title,
+    slug,
+    excerpt,
+    conteudo,
+    category,
+    tags: [keyword, 'Festa Infantil', 'Locação SJC', 'Lazer'],
+    seoTitle: `${title.substring(0, 50)} - Twix Eventos`,
+    seoDescription: excerpt.substring(0, 150),
+    seoKeywords: `${keyword}, locação sjc, brinquedos inflaveis`,
+    imagePrompt: '',
+  }
 }
 
 async function callOpenAiCompatible(
   baseUrl: string,
   model: string,
   apiKey: string,
-  prompt: string,
+  prompt: string
 ): Promise<string> {
   const res = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
       'HTTP-Referer': 'https://twixeventos.vercel.app',
       'X-Title': 'Twix Eventos Admin',
     },
@@ -58,7 +92,7 @@ async function callAnthropic(model: string, apiKey: string, prompt: string): Pro
 
 function cleanJsonResponse(text: string): string {
   let cleaned = text.trim()
-  
+
   // Remover bloco <think>...</think> se existir (comum em modelos de raciocínio como DeepSeek-R1)
   cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '').trim()
 
@@ -95,11 +129,8 @@ export async function POST(request: Request) {
       getConfig('ia_api_key'),
     ])
 
-    if (!provedor || !modelo || !apiKey) {
-      return NextResponse.json({
-        error: 'Chave de IA não configurada. Configure o provedor de IA e a API Key nas Configurações do Sistema.'
-      }, { status: 400 })
-    }
+    const isAiConfigured = !!(provedor && modelo && apiKey)
+    let parsed = null
 
     const prompt = `Você é um redator sênior especialista em Marketing de Conteúdo, SEO local e produção de artigos de alto engajamento.
 Escreva um artigo de blog extremamente completo, detalhado e explicativo sobre o tema abaixo.
@@ -133,25 +164,38 @@ Retorne APENAS um objeto JSON válido (sem formatação markdown, sem comentári
   "imagePrompt": "(prompt em inglês detalhado e visual para DALL-E gerar a foto de destaque perfeita, sem texto na imagem)"
 }`
 
-    const provKey = provedor.toLowerCase().trim()
-    let rawText = ''
+    if (isAiConfigured) {
+      try {
+        const provKey = provedor.toLowerCase().trim()
+        let rawText = ''
 
-    if (provKey === 'anthropic') {
-      rawText = await callAnthropic(modelo, apiKey, prompt)
-    } else {
-      const baseUrl = PROVIDER_BASES[provKey] ?? `https://api.${provKey}.com/v1`
-      rawText = await callOpenAiCompatible(baseUrl, modelo, apiKey, prompt)
+        if (provKey === 'anthropic') {
+          rawText = await callAnthropic(modelo!, apiKey!, prompt)
+        } else {
+          const baseUrl = PROVIDER_BASES[provKey] ?? `https://api.${provKey}.com/v1`
+          rawText = await callOpenAiCompatible(baseUrl, modelo!, apiKey!, prompt)
+        }
+
+        const cleanedText = cleanJsonResponse(rawText)
+        parsed = JSON.parse(cleanedText)
+      } catch (err) {
+        console.warn('[gerar-post] AI Generation failed (offline/network error), running offline fallback:', err)
+      }
     }
 
-    const cleanedText = cleanJsonResponse(rawText)
-    const parsed = JSON.parse(cleanedText)
+    if (!parsed) {
+      parsed = generateOfflinePost(keyword)
+    }
 
     return NextResponse.json({
       success: true,
-      post: parsed
+      post: parsed,
     })
   } catch (error: any) {
     console.error('[gerar-post] Error:', error)
-    return NextResponse.json({ error: error.message ?? 'Erro interno ao gerar conteúdo do post.' }, { status: 500 })
+    return NextResponse.json(
+      { error: error.message ?? 'Erro interno ao gerar conteúdo do post.' },
+      { status: 500 }
+    )
   }
 }

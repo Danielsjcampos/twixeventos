@@ -12,22 +12,72 @@ import path from 'path'
 import { randomUUID } from 'crypto'
 
 const PROVIDER_BASES: Record<string, string> = {
-  openai:       'https://api.openai.com/v1',
-  openrouter:   'https://openrouter.ai/api/v1',
-  groq:         'https://api.groq.com/openai/v1',
-  deepseek:     'https://api.deepseek.com/v1',
-  gemini:       'https://generativelanguage.googleapis.com/v1beta/openai',
-  anthropic:    '__anthropic__',
+  openai: 'https://api.openai.com/v1',
+  openrouter: 'https://openrouter.ai/api/v1',
+  groq: 'https://api.groq.com/openai/v1',
+  deepseek: 'https://api.deepseek.com/v1',
+  gemini: 'https://generativelanguage.googleapis.com/v1beta/openai',
+  anthropic: '__anthropic__',
+}
+
+function getRandomOfflineTopic(): string {
+  const topics = [
+    'Aluguel de Brinquedos Infláveis em São José dos Campos',
+    'Como Planejar um Aniversário Infantil Perfeito',
+    'Locação de Tobogã e Touro Mecânico no Vale do Paraíba',
+    'Brinquedos Eletrônicos para Festas de Adolescentes',
+    'Dicas de Segurança no Uso de Brinquedos em Festas',
+    'Organizando Eventos Corporativos com Espaço Kids',
+  ]
+  return topics[Math.floor(Math.random() * topics.length)]
+}
+
+function generateOfflinePost(keyword: string) {
+  const slug = slugify(keyword)
+  const category = 'Dicas de Festa'
+  const title = `Tudo sobre ${keyword} para seu Evento`
+  const excerpt = `Descubra as melhores dicas sobre ${keyword} em São José dos Campos e região para tornar sua festa inesquecível.`
+  
+  const conteudo = `
+<h2>Por que ${keyword} é a escolha ideal para seu evento?</h2>
+<p>Organizar uma festa infantil ou evento corporativo de sucesso exige atenção especial ao entretenimento. Ao optar por ${keyword} em São José dos Campos (SJC) e Vale do Paraíba, você garante diversão de alta qualidade e momentos memoráveis para todos os convidados.</p>
+<p>A Twix Eventos conta com uma equipe especializada e brinquedos novos, higienizados e totalmente seguros, garantindo a tranquilidade dos pais e a alegria da garotada.</p>
+
+<h2>Segurança e Qualidade em Primeiro Lugar</h2>
+<p>Ao planejar a locação de itens para festas, a segurança deve ser sua prioridade absoluta. Todos os nossos equipamentos passam por inspeções rigorosas e manutenção periódica. Nossa equipe faz a montagem profissional no local do evento, assegurando que tudo funcione perfeitamente do início ao fim.</p>
+<p>Seja aluguel de brinquedos infláveis, camas elásticas ou eletrônicos, cada item é projetado para oferecer a máxima diversão com segurança total.</p>
+
+<h2>Dicas para Planejar o Espaço do Evento</h2>
+<p>Antes de confirmar a reserva, é fundamental medir a área disponível no salão ou quintal. Certifique-se de que o local possui acesso fácil à energia elétrica e espaço suficiente para a circulação segura das crianças ao redor do brinquedo. Com um planejamento simples, seu evento será um verdadeiro sucesso!</p>
+  `.trim()
+
+  return {
+    title,
+    slug,
+    excerpt,
+    conteudo,
+    category,
+    tags: [keyword, 'Festa Infantil', 'Locação SJC', 'Lazer'],
+    seoTitle: `${title.substring(0, 50)} - Twix Eventos`,
+    seoDescription: excerpt.substring(0, 150),
+    seoKeywords: `${keyword}, locação sjc, brinquedos inflaveis`,
+    imagePrompt: '',
+  }
 }
 
 const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads', 'brinquedos')
 
-async function callOpenAiCompatible(baseUrl: string, model: string, apiKey: string, prompt: string): Promise<string> {
+async function callOpenAiCompatible(
+  baseUrl: string,
+  model: string,
+  apiKey: string,
+  prompt: string
+): Promise<string> {
   const res = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
       'HTTP-Referer': 'https://twixeventos.vercel.app',
       'X-Title': 'Twix Eventos Cron',
     },
@@ -73,13 +123,17 @@ function cleanJsonResponse(text: string): string {
 }
 
 // Helper to generate cover image using DALL-E
-async function generateDalleImage(prompt: string, apiKey: string, slug: string): Promise<string | null> {
+async function generateDalleImage(
+  prompt: string,
+  apiKey: string,
+  slug: string
+): Promise<string | null> {
   try {
     const response = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: 'dall-e-3',
@@ -133,16 +187,13 @@ export async function GET(request: Request) {
       getConfig('blog_fallback_imagens'),
     ])
 
-    if (!provedor || !modelo || !apiKey) {
-      return NextResponse.json({ error: 'Chaves de IA não configuradas.' }, { status: 500 })
-    }
+    const isAiConfigured = !!(provedor && modelo && apiKey)
+    const provKey = isAiConfigured ? provedor.toLowerCase().trim() : 'offline'
 
-    const provKey = provedor.toLowerCase().trim()
-    
     // 3. Resolve keyword/topic
     let keyword = ''
     let queue: string[] = []
-    
+
     if (queueRaw) {
       try {
         queue = JSON.parse(queueRaw)
@@ -164,9 +215,9 @@ export async function GET(request: Request) {
         .from(blogPosts)
         .orderBy(desc(blogPosts.createdAt))
         .limit(15)
-      
-      const titlesList = recentPosts.map(p => p.titulo).join('\n')
-      
+
+      const titlesList = recentPosts.map((p) => p.titulo).join('\n')
+
       const suggestPrompt = `Você é um especialista em SEO e Marketing de Conteúdo para empresas de lazer e festas infantis.
 Sugira uma única palavra-chave ou tema de artigo altamente relevante, atrativo e focado em cliques (SEO local) para o blog da "Twix Eventos" (empresa que faz locação de brinquedos infláveis, camas elásticas e eletrônicos para aniversários e eventos corporativos em São José dos Campos e Vale do Paraíba).
 
@@ -176,14 +227,26 @@ ${titlesList || '(Nenhum artigo publicado ainda)'}
 Retorne APENAS a palavra-chave/tema sugerido em texto puro, sem aspas, sem formatações ou comentários.`
 
       let suggestion = ''
-      if (provKey === 'anthropic') {
-        suggestion = await callAnthropic(modelo, apiKey, suggestPrompt)
+      if (isAiConfigured) {
+        try {
+          if (provKey === 'anthropic') {
+            suggestion = await callAnthropic(modelo, apiKey!, suggestPrompt)
+          } else {
+            const baseUrl = PROVIDER_BASES[provKey] ?? `https://api.${provKey}.com/v1`
+            suggestion = await callOpenAiCompatible(baseUrl, modelo!, apiKey!, suggestPrompt)
+          }
+        } catch (err) {
+          console.warn('[cron-blog] AI Suggestion failed (offline/network error), running offline fallback:', err)
+          suggestion = getRandomOfflineTopic()
+        }
       } else {
-        const baseUrl = PROVIDER_BASES[provKey] ?? `https://api.${provKey}.com/v1`
-        suggestion = await callOpenAiCompatible(baseUrl, modelo, apiKey, suggestPrompt)
+        suggestion = getRandomOfflineTopic()
       }
 
-      keyword = suggestion.trim().replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1')
+      keyword = suggestion
+        .trim()
+        .replace(/^"(.*)"$/, '$1')
+        .replace(/^'(.*)'$/, '$1')
       console.log('[cron-blog] Autopilot suggested keyword:', keyword)
     }
 
@@ -224,34 +287,37 @@ Retorne APENAS um objeto JSON válido (sem formatação markdown, sem comentári
   "imagePrompt": "(prompt em inglês detalhado e visual para DALL-E gerar a foto de destaque perfeita, sem texto na imagem)"
 }`
 
-    let generatedText = ''
-    if (provKey === 'anthropic') {
-      generatedText = await callAnthropic(modelo, apiKey, generatePrompt)
+    let postData: any = null
+    if (isAiConfigured) {
+      try {
+        let generatedText = ''
+        if (provKey === 'anthropic') {
+          generatedText = await callAnthropic(modelo!, apiKey!, generatePrompt)
+        } else {
+          const baseUrl = PROVIDER_BASES[provKey] ?? `https://api.${provKey}.com/v1`
+          generatedText = await callOpenAiCompatible(baseUrl, modelo!, apiKey!, generatePrompt)
+        }
+
+        const cleanedText = cleanJsonResponse(generatedText)
+        postData = JSON.parse(cleanedText)
+      } catch (err) {
+        console.warn('[cron-blog] AI Generation failed (offline/network error), running offline fallback:', err)
+        postData = generateOfflinePost(keyword)
+      }
     } else {
-      const baseUrl = PROVIDER_BASES[provKey] ?? `https://api.${provKey}.com/v1`
-      generatedText = await callOpenAiCompatible(baseUrl, modelo, apiKey, generatePrompt)
+      postData = generateOfflinePost(keyword)
     }
 
-    const cleanedText = cleanJsonResponse(generatedText)
-    const postData = JSON.parse(cleanedText)
-
-    if (!postData.title || !postData.conteudo) {
-      throw new Error('Conteúdo ou Título gerado pela IA está vazio ou inválido.')
+    if (!postData || !postData.title || !postData.conteudo) {
+      throw new Error('Conteúdo ou Título gerado está vazio ou inválido.')
     }
 
     const slug = postData.slug || slugify(postData.title)
 
-    // 5. Generate Featured Cover Image
+    // 5. Select Featured Cover Image from Fallback Gallery
     let fotoDestaque: string | null = null
-    
-    // Try DALL-E if OpenAI is the provider
-    if (provKey === 'openai' && postData.imagePrompt) {
-      fotoDestaque = await generateDalleImage(postData.imagePrompt, apiKey, slug)
-      console.log('[cron-blog] DALL-E cover generated:', fotoDestaque)
-    }
 
-    // Fallback if DALL-E failed or is not available
-    if (!fotoDestaque && fallbacksRaw) {
+    if (fallbacksRaw) {
       try {
         const fallbacks: string[] = JSON.parse(fallbacksRaw)
         if (fallbacks.length > 0) {
@@ -259,8 +325,18 @@ Retorne APENAS um objeto JSON válido (sem formatação markdown, sem comentári
           fotoDestaque = fallbacks[idx]
           console.log('[cron-blog] Selected cover from fallback gallery:', fotoDestaque)
         }
-      } catch {
-        fotoDestaque = null
+      } catch (err) {
+        console.error('[cron-blog] Error parsing fallback images:', err)
+      }
+    }
+
+    // Try DALL-E if OpenAI is the provider, and we haven't selected a fallback image yet
+    if (!fotoDestaque && isAiConfigured && provKey === 'openai' && postData.imagePrompt) {
+      try {
+        fotoDestaque = await generateDalleImage(postData.imagePrompt, apiKey!, slug)
+        console.log('[cron-blog] DALL-E cover generated as fallback:', fotoDestaque)
+      } catch (err) {
+        console.warn('[cron-blog] DALL-E cover generation failed:', err)
       }
     }
 
@@ -296,11 +372,13 @@ Retorne APENAS um objeto JSON válido (sem formatação markdown, sem comentári
         slug: publishedPost.slug,
         categoria: publishedPost.categoria,
         fotoDestaque: publishedPost.fotoDestaque,
-      }
+      },
     })
-
   } catch (error: any) {
     console.error('[cron-blog] Error:', error)
-    return NextResponse.json({ error: error.message ?? 'Erro interno no cron de geração de blog.' }, { status: 500 })
+    return NextResponse.json(
+      { error: error.message ?? 'Erro interno no cron de geração de blog.' },
+      { status: 500 }
+    )
   }
 }
